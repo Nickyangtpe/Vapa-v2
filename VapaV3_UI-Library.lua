@@ -1,57 +1,41 @@
--- UILibrary ModuleScript (修改後)
+-- UILibrary ModuleScript
 local UserInputService = game:GetService("UserInputService")
 local TweenService = game:GetService("TweenService")
 local RunService = game:GetService("RunService")
-local GuiService = game:GetService("GuiService")
 
--- 全域變數：目前正在拖曳的視窗（避免多重拖曳）
-local currentlyDraggedWindow = nil
-
--- 常數設定
-local MOBILE = UserInputService.TouchEnabled
-local WINDOW_PADDING = 10
-local DRAG_THRESHOLD = 5
-
-local library = {
-    windows = {},
-    theme = {
-        background = Color3.fromRGB(25, 25, 25),
-        windowBackground = Color3.fromRGB(30, 30, 30),
-        foreground = Color3.fromRGB(255, 255, 255),
-        muted = Color3.fromRGB(175, 175, 175),
-        accent = Color3.fromRGB(0, 170, 255),
-        success = Color3.fromRGB(0, 255, 0),
-        warning = Color3.fromRGB(255, 255, 0),
-        error = Color3.fromRGB(255, 0, 0)
-    }
+local library = {}
+library.theme = {
+    background = Color3.fromRGB(25, 25, 25),
+    windowBackground = Color3.fromRGB(30, 30, 30),
+    foreground = Color3.fromRGB(255, 255, 255),
+    muted = Color3.fromRGB(175, 175, 175),
+    accent = Color3.fromRGB(0, 170, 255),
+    success = Color3.fromRGB(0, 255, 0),
+    warning = Color3.fromRGB(255, 255, 0),
+    error = Color3.fromRGB(255, 0, 0)
 }
 
--- Screen GUI 設定
+local currentlyDraggedWindow = nil
+local WINDOW_PADDING = 10
+local DRAG_THRESHOLD = 5
+local MOBILE = UserInputService.TouchEnabled
+
 local ScreenGui = Instance.new("ScreenGui")
 ScreenGui.Name = "VAPE"
 ScreenGui.ResetOnSpawn = false
 ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
-if MOBILE then
-    ScreenGui.IgnoreGuiInset = true
-end
+if MOBILE then ScreenGui.IgnoreGuiInset = true end
 if RunService:IsStudio() then
     ScreenGui.Parent = game.Players.LocalPlayer:WaitForChild("PlayerGui")
 else
     ScreenGui.Parent = game:GetService("CoreGui")
 end
 
--- Tween 建立函式
 local function CreateTween(instance, properties, duration)
     return TweenService:Create(instance, TweenInfo.new(duration or 0.2, Enum.EasingStyle.Quad), properties)
 end
 
--- Window Manager
-local WindowManager = {
-    activeWindow = nil,
-    zIndex = 1,
-    windows = {},
-    windowOffset = 0
-}
+local WindowManager = { activeWindow = nil, zIndex = 1, windows = {}, windowOffset = 0 }
 function WindowManager:BringToFront(window)
     self.zIndex = self.zIndex + 1
     window.ZIndex = self.zIndex
@@ -59,7 +43,7 @@ function WindowManager:BringToFront(window)
 end
 
 ------------------------------------------------
--- 1. CreateWindow (也就是 TagWindow，保持原樣)
+-- CreateWindow (或 TagWindow) – 與原版一致
 function library:CreateWindow(name, fixed)
     local window = Instance.new("Frame")
     window.Name = name
@@ -94,7 +78,6 @@ function library:CreateWindow(name, fixed)
     corner.CornerRadius = UDim.new(0, 6)
     corner.Parent = window
 
-    -- Title Bar
     local titleBar = Instance.new("Frame")
     titleBar.Name = "TitleBar"
     titleBar.Parent = window
@@ -119,7 +102,6 @@ function library:CreateWindow(name, fixed)
     title.TextSize = 14
     title.TextXAlignment = Enum.TextXAlignment.Left
 
-    -- 摺疊/展開按鈕
     local toggleButton = Instance.new("TextButton")
     toggleButton.Name = "ToggleButton"
     toggleButton.Parent = titleBar
@@ -134,6 +116,7 @@ function library:CreateWindow(name, fixed)
     local expanded = true
     local expandedSize = window.Size
     local collapsedSize = UDim2.new(expandedSize.X.Scale, expandedSize.X.Offset, 0, titleBar.Size.Y.Offset)
+
     toggleButton.MouseButton1Click:Connect(function()
         if expanded then
             expanded = false
@@ -146,7 +129,6 @@ function library:CreateWindow(name, fixed)
         end
     end)
 
-    -- 內容區（可放置 item 等）
     local content = Instance.new("ScrollingFrame")
     content.Name = "Content"
     content.Parent = window
@@ -157,26 +139,28 @@ function library:CreateWindow(name, fixed)
     content.ScrollBarImageColor3 = self.theme.accent
     content.ScrollBarImageTransparency = 0.8
     content.CanvasSize = UDim2.new(0, 0, 0, 0)
+
     local list = Instance.new("UIListLayout")
     list.Parent = content
     list.SortOrder = Enum.SortOrder.LayoutOrder
     list.Padding = UDim.new(0, 4)
+
     local padding = Instance.new("UIPadding")
     padding.Parent = content
     padding.PaddingLeft = UDim.new(0, 8)
     padding.PaddingRight = UDim.new(0, 8)
     padding.PaddingTop = UDim.new(0, 8)
     padding.PaddingBottom = UDim.new(0, 8)
+
     list:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
         content.CanvasSize = UDim2.new(0, 0, 0, list.AbsoluteContentSize.Y + 16)
     end)
 
-    -- 拖曳視窗功能 (僅限非固定視窗)
     if not fixed then
         local dragStart, startPos = nil, nil
         titleBar.InputBegan:Connect(function(input)
             if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-                if currentlyDraggedWindow == nil then
+                if not currentlyDraggedWindow then
                     currentlyDraggedWindow = window
                     dragStart = input.Position
                     startPos = window.Position
@@ -205,12 +189,11 @@ function library:CreateWindow(name, fixed)
         end)
     end
 
-    return {Window = window, Content = content}
+    return { Window = window, Content = content, Fixed = fixed }
 end
 
 ------------------------------------------------
--- 2. CreateItem (不加入預設選項，並支援註冊開關事件)
--- 這裡 item 只產生一個按鈕，另外會建立一個空的 OptionsArea 供日後添加其他控制項
+-- CreateItem – 此函式只建立一個按鈕項目，不會自動產生預設選項
 function library:CreateItem(parent, name, callback)
     local item = Instance.new("Frame")
     item.Name = name
@@ -245,47 +228,36 @@ function library:CreateItem(parent, name, callback)
     button.MouseButton1Click:Connect(function()
         toggled = not toggled
         if toggled then
-            CreateTween(item, {BackgroundColor3 = Color3.fromRGB(255, 255, 255), BackgroundTransparency = 0}, 0.2):Play()
-            CreateTween(button, {TextColor3 = Color3.fromRGB(0, 0, 0)}, 0.2):Play()
-            if item.OptionsArea then
-                item.OptionsArea.Visible = true
-            end
+            CreateTween(item, {BackgroundColor3 = Color3.fromRGB(255,255,255), BackgroundTransparency = 0}, 0.2):Play()
+            CreateTween(button, {TextColor3 = Color3.fromRGB(0,0,0)}, 0.2):Play()
         else
             CreateTween(item, {BackgroundColor3 = self.theme.background, BackgroundTransparency = 0.9}, 0.2):Play()
             CreateTween(button, {TextColor3 = self.theme.foreground}, 0.2):Play()
-            if item.OptionsArea then
-                CreateTween(item.OptionsArea, {Size = UDim2.new(1, 0, 0, 0)}, 0.3):Play()
-                item.OptionsArea.Visible = false
-            end
         end
         if callback then
             callback(toggled)
         end
     end)
-
-    -- 建立一個空的 OptionsArea（選項容器），日後可將滑桿、勾選、選單等加入此容器
-    local optionsArea = Instance.new("Frame")
-    optionsArea.Name = "OptionsArea"
-    optionsArea.Parent = parent  -- 與 item 同一父容器 (例如：窗口的 Content)
-    optionsArea.BackgroundColor3 = self.theme.windowBackground
-    optionsArea.BackgroundTransparency = 0.9
-    optionsArea.BorderSizePixel = 1
-    optionsArea.BorderColor3 = self.theme.background
-    optionsArea.Size = UDim2.new(1, 0, 0, 0) -- 初始高度 0
-    optionsArea.Visible = false
-    optionsArea.ClipsDescendants = true
-    optionsArea.ZIndex = 9
-    local list = Instance.new("UIListLayout")
-    list.Parent = optionsArea
-    list.SortOrder = Enum.SortOrder.LayoutOrder
-    list.Padding = UDim.new(0, 4)
-    item.OptionsArea = optionsArea
-
     return item
 end
 
+-- 可呼叫此函式為 item 附加一個「選項容器」，供你自行添加各類控制項
+function library:AttachSettings(item)
+    if not item:FindFirstChild("SettingsContainer") then
+        local container = Instance.new("Frame")
+        container.Name = "SettingsContainer"
+        container.Parent = item
+        container.BackgroundTransparency = 1
+        container.Size = UDim2.new(1, 0, 0, 0)  -- 初始隱藏，可根據內容自動延展
+        local layout = Instance.new("UIListLayout", container)
+        layout.SortOrder = Enum.SortOrder.LayoutOrder
+        return container
+    end
+    return item.SettingsContainer
+end
+
 ------------------------------------------------
--- 3. CreateSlider (增加 callback 參數)
+-- CreateSlider – 現在可傳入 callback(value)
 function library:CreateSlider(parent, name, min, max, default, callback)
     local slider = Instance.new("Frame")
     slider.Name = name
@@ -320,6 +292,7 @@ function library:CreateSlider(parent, name, min, max, default, callback)
     sliderButton.Size = UDim2.new(0, 10, 0, 10)
     sliderButton.Position = UDim2.new((default - min) / (max - min), -0.5, 0.5, 0)
     sliderButton.AnchorPoint = Vector2.new(0.5, 0.5)
+
     local buttonCorner = Instance.new("UICorner")
     buttonCorner.CornerRadius = UDim.new(0, 5)
     buttonCorner.Parent = sliderButton
@@ -355,15 +328,13 @@ function library:CreateSlider(parent, name, min, max, default, callback)
             local newValue = math.floor(min + (max - min) * percentage)
             sliderButton.Position = UDim2.new(percentage, -0.5, 0.5, 0)
             value.Text = tostring(newValue)
-            if callback then
-                callback(newValue)
-            end
+            if callback then callback(newValue) end
         end
     end)
 end
 
 ------------------------------------------------
--- 4. CreateRangeSlider (增加 callback 參數，回傳最小與最大值)
+-- CreateRangeSlider – 可傳入 callback(minValue, maxValue)
 function library:CreateRangeSlider(parent, name, min, max, defaultMin, defaultMax, callback)
     local slider = Instance.new("Frame")
     slider.Name = name
@@ -428,6 +399,7 @@ function library:CreateRangeSlider(parent, name, min, max, defaultMin, defaultMa
 
     local draggingMin = false
     local draggingMax = false
+
     minSliderButton.InputBegan:Connect(function(input)
         if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
             draggingMin = true
@@ -452,31 +424,23 @@ function library:CreateRangeSlider(parent, name, min, max, defaultMin, defaultMa
             local newValue = math.floor(min + (max - min) * percentage)
             if draggingMin then
                 local currentMax = tonumber(string.split(rangeValueLabel.Text, "-")[2])
-                if newValue > currentMax then
-                    newValue = currentMax
-                end
+                if newValue > currentMax then newValue = currentMax end
                 minSliderButton.Position = UDim2.new(percentage, -0.5, 0.5, 0)
                 rangeValueLabel.Text = tostring(newValue) .. "-" .. tostring(currentMax)
-                if callback then
-                    callback(newValue, currentMax)
-                end
+                if callback then callback(newValue, currentMax) end
             elseif draggingMax then
                 local currentMin = tonumber(string.split(rangeValueLabel.Text, "-")[1])
-                if newValue < currentMin then
-                    newValue = currentMin
-                end
+                if newValue < currentMin then newValue = currentMin end
                 maxSliderButton.Position = UDim2.new(percentage, -0.5, 0.5, 0)
                 rangeValueLabel.Text = tostring(currentMin) .. "-" .. tostring(newValue)
-                if callback then
-                    callback(currentMin, newValue)
-                end
+                if callback then callback(currentMin, newValue) end
             end
         end
     end)
 end
 
 ------------------------------------------------
--- 5. CreateToggle (增加 callback 參數)
+-- CreateToggle – 可傳入 callback(state)
 function library:CreateToggle(parent, name, callback)
     local toggle = Instance.new("Frame")
     toggle.Name = name
@@ -516,6 +480,7 @@ function library:CreateToggle(parent, name, callback)
     toggleInner.BorderSizePixel = 0
     toggleInner.Position = UDim2.new(0.5, 0, 0.5, 0)
     toggleInner.Size = UDim2.new(0, 0, 0, 0)
+
     local toggleInnerCorner = Instance.new("UICorner")
     toggleInnerCorner.CornerRadius = UDim.new(0, 4)
     toggleInnerCorner.Parent = toggleInner
@@ -528,14 +493,12 @@ function library:CreateToggle(parent, name, callback)
         else
             CreateTween(toggleInner, {Size = UDim2.new(0, 0, 0, 0)}, 0.2):Play()
         end
-        if callback then
-            callback(toggled)
-        end
+        if callback then callback(toggled) end
     end)
 end
 
 ------------------------------------------------
--- 6. CreateDropdown (增加 callback 參數)
+-- CreateDropdown – 可傳入 callback(option)
 function library:CreateDropdown(parent, name, options, callback)
     local container = Instance.new("Frame")
     container.Name = name .. "Container"
@@ -556,7 +519,7 @@ function library:CreateDropdown(parent, name, options, callback)
     dropdownButton.BorderSizePixel = 0
     dropdownButton.Size = UDim2.new(1, 0, 0, 25)
     dropdownButton.Font = Enum.Font.Gotham
-    dropdownButton.Text = options[1] or ""
+    dropdownButton.Text = options[1]
     dropdownButton.TextColor3 = self.theme.foreground
     dropdownButton.TextSize = 12
     dropdownButton.TextXAlignment = Enum.TextXAlignment.Left
@@ -601,9 +564,7 @@ function library:CreateDropdown(parent, name, options, callback)
             dropdownButton.Text = option
             dropdownList.Visible = false
             container.Size = UDim2.new(1, 0, 0, 25)
-            if callback then
-                callback(option)
-            end
+            if callback then callback(option) end
         end)
     end
 
@@ -618,7 +579,7 @@ function library:CreateDropdown(parent, name, options, callback)
 end
 
 ------------------------------------------------
--- 監聽螢幕大小變化，重新調整非固定視窗位置
+-- 當螢幕尺寸改變時，重新調整非固定視窗的位置
 ScreenGui:GetPropertyChangedSignal("AbsoluteSize"):Connect(function()
     WindowManager.windowOffset = 0
     for window, _ in pairs(WindowManager.windows) do
@@ -638,5 +599,18 @@ ScreenGui:GetPropertyChangedSignal("AbsoluteSize"):Connect(function()
         end
     end
 end)
+
+------------------------------------------------
+-- 建立預設 mainWindow – 用於顯示所有視窗的 toggle 項
+library.mainWindow = library:CreateWindow("Main", true)
+library.mainWindow.Window.Position = UDim2.new(0, 10, 0, 10)
+
+-- 函式：將一個視窗的開關項加入 mainWindow 內，點選後可切換對應視窗的顯示與隱藏
+function library:AddWindowToggle(windowInstance)
+    local item = library:CreateItem(library.mainWindow.Content, windowInstance.Window.Name, function(state)
+        windowInstance.Window.Visible = state
+    end)
+    return item
+end
 
 return library
