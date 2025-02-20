@@ -193,24 +193,38 @@ function library:CreateWindow(name, fixed)
 end
 
 ------------------------------------------------
--- CreateItem – 此函式只建立一個按鈕項目，不會自動產生預設選項
+-- CreateItem – 此函式只建立一個可展開選項的按鈕項目
 function library:CreateItem(parent, name, callback)
     local item = Instance.new("Frame")
     item.Name = name
     item.Parent = parent
     item.BackgroundColor3 = self.theme.background
     item.BackgroundTransparency = 0.9
-    item.Size = UDim2.new(1, 0, 0, 32)
+    item.Size = UDim2.new(1, 0, 0, 32) -- Initial size for just the button
     item.ClipsDescendants = true
-    item.LayoutOrder = #parent:GetChildren() + 1 -- Ensure correct order in UIListLayout
+
+    local layout = Instance.new("UIListLayout") -- Add UIListLayout to manage button and settings
+    layout.Parent = item
+    layout.SortOrder = Enum.SortOrder.LayoutOrder
+    layout.Padding = UDim.new(0, 0) -- No padding between button and settings
 
     local corner = Instance.new("UICorner")
     corner.CornerRadius = UDim.new(0, 4)
     corner.Parent = item
 
+    local buttonContainer = Instance.new("Frame") -- Container for the button to control background
+    buttonContainer.Name = "ButtonContainer"
+    buttonContainer.Parent = item
+    buttonContainer.BackgroundTransparency = 1
+    buttonContainer.Size = UDim2.new(1, 0, 0, 32)
+
+    local buttonCorner = Instance.new("UICorner")
+    buttonCorner.CornerRadius = UDim.new(0, 4)
+    buttonCorner.Parent = buttonContainer
+
     local button = Instance.new("TextButton")
     button.Name = "Button"
-    button.Parent = item
+    button.Parent = buttonContainer
     button.BackgroundTransparency = 1
     button.Size = UDim2.new(1, -30, 0, 32)
     button.Position = UDim2.new(0, 0, 0, 0)
@@ -225,53 +239,58 @@ function library:CreateItem(parent, name, callback)
     padding.Parent = button
     padding.PaddingLeft = UDim.new(0, 10)
 
-    local settingsContainer = library:AttachSettings(item)
-    settingsContainer.LayoutOrder = 100 -- Ensure settings are below the button
+    local settingsContainer = Instance.new("Frame") -- Settings container, initially hidden
+    settingsContainer.Name = "SettingsContainer"
+    settingsContainer.Parent = item
+    settingsContainer.BackgroundTransparency = 1
+    settingsContainer.Size = UDim2.new(1, 0, 0, 0) -- Initially hidden (height 0)
+    settingsContainer.ClipsDescendants = true
+    settingsContainer.Visible = false -- Initially hidden
+
+    local settingsLayout = Instance.new("UIListLayout") -- Layout for settings inside the container
+    settingsLayout.Parent = settingsContainer
+    settingsLayout.SortOrder = Enum.SortOrder.LayoutOrder
+    settingsLayout.Padding = UDim.new(0, 4)
+
+    local settingsPadding = Instance.new("UIPadding")
+    settingsPadding.Parent = settingsContainer
+    settingsPadding.PaddingLeft = UDim.new(0, 8)
+    settingsPadding.PaddingRight = UDim.new(0, 8)
+    settingsPadding.PaddingTop = UDim.new(0, 8)
+    settingsPadding.PaddingBottom = UDim.new(0, 8)
+
 
     local toggled = false
     button.MouseButton1Click:Connect(function()
         toggled = not toggled
         if toggled then
-            CreateTween(item, {BackgroundColor3 = Color3.fromRGB(255,255,255), BackgroundTransparency = 0}, 0.2):Play()
+            CreateTween(buttonContainer, {BackgroundColor3 = Color3.fromRGB(255,255,255), BackgroundTransparency = 0}, 0.2):Play()
             CreateTween(button, {TextColor3 = Color3.fromRGB(0,0,0)}, 0.2):Play()
-            CreateTween(settingsContainer, {Size = UDim2.new(1, 0, 0, settingsContainer.ListLayout.AbsoluteContentSize.Y)}, 0.2):Play() -- Expand settings
-            settingsContainer.Visible = true
+            settingsContainer.Visible = true -- Show settings
+            local targetHeight = settingsContainer.UIListLayout.AbsoluteContentSize.Y + settingsPadding.PaddingTop.Offset + settingsPadding.PaddingBottom.Offset -- Calculate height based on content
+            CreateTween(settingsContainer, {Size = UDim2.new(1, 0, 0, targetHeight)}, 0.3):Play() -- Animate settings container height
+            CreateTween(item, {Size = UDim2.new(1, 0, 0, 32 + targetHeight)}, 0.3):Play() -- Animate item height to include settings
         else
-            CreateTween(item, {BackgroundColor3 = self.theme.background, BackgroundTransparency = 0.9}, 0.2):Play()
+            CreateTween(buttonContainer, {BackgroundColor3 = self.theme.background, BackgroundTransparency = 0.9}, 0.2):Play()
             CreateTween(button, {TextColor3 = self.theme.foreground}, 0.2):Play()
-            CreateTween(settingsContainer, {Size = UDim2.new(1, 0, 0, 0)}, 0.2):Play() -- Collapse settings
-            settingsContainer.Visible = false
+            CreateTween(settingsContainer, {Size = UDim2.new(1, 0, 0, 0)}, 0.3):Play() -- Animate settings container height to 0
+            CreateTween(item, {Size = UDim2.new(1, 0, 0, 32)}, 0.3):Play() -- Animate item height back to button only
+            wait(0.3) -- Wait for collapse animation to finish before hiding to prevent layout issues
+            settingsContainer.Visible = false -- Hide settings after collapse
         end
         if callback then
             callback(toggled)
         end
     end)
+
+    item.SettingsContainer = settingsContainer -- Expose SettingsContainer
     return item
 end
 
+
 -- 可呼叫此函式為 item 附加一個「選項容器」，供你自行添加各類控制項
 function library:AttachSettings(item)
-    if not item:FindFirstChild("SettingsContainer") then
-        local container = Instance.new("Frame")
-        container.Name = "SettingsContainer"
-        container.Parent = item
-        container.BackgroundTransparency = 1
-        container.Size = UDim2.new(1, 0, 0, 0)  -- 初始隱藏，高度為 0
-        container.ClipsDescendants = true -- Clip content when collapsed
-        container.Visible = false -- Initially hidden
-        local layout = Instance.new("UIListLayout", container)
-        layout.SortOrder = Enum.SortOrder.LayoutOrder
-        layout.Padding = UDim.new(0, 4)
-        container.ListLayout = layout -- Store UIListLayout for easy access
-        local padding = Instance.new("UIPadding")
-        padding.Parent = container
-        padding.PaddingLeft = UDim.new(0, 16) -- Indent settings slightly
-        padding.PaddingRight = UDim.new(0, 8)
-        padding.PaddingBottom = UDim.new(0, 8)
-        return container
-    else
-        return item.SettingsContainer
-    end
+    return item.SettingsContainer -- Now directly returns the SettingsContainer
 end
 
 
@@ -627,6 +646,7 @@ library.mainWindow.Window.Position = UDim2.new(0, 10, 0, 10)
 -- 函式：將一個視窗的開關項加入 mainWindow 內，點選後可切換對應視窗的顯示與隱藏
 function library:AddWindowToggle(windowInstance)
     local item = library:CreateItem(library.mainWindow.Content, windowInstance.Window.Name, function(state)
+        -- You can add specific logic here if needed when the window toggle in mainWindow is clicked
         windowInstance.Window.Visible = state
     end)
     return item
