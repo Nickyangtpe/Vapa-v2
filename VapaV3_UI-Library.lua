@@ -1,10 +1,10 @@
--- UILibrary ModuleScript
+-- Normal Script (Not a ModuleScript)
+
 local UserInputService = game:GetService("UserInputService")
 local TweenService = game:GetService("TweenService")
 local RunService = game:GetService("RunService")
 
-local library = {}
-library.theme = {
+local theme = {
     background = Color3.fromRGB(25, 25, 25),
     windowBackground = Color3.fromRGB(30, 30, 30),
     foreground = Color3.fromRGB(255, 255, 255),
@@ -43,12 +43,12 @@ function WindowManager:BringToFront(window)
 end
 
 ------------------------------------------------
--- CreateWindow (或 TagWindow) – 與原版一致
-function library:CreateWindow(name, fixed)
+-- CreateWindow
+local function CreateWindow(name, fixed)
     local window = Instance.new("Frame")
     window.Name = name
     window.Parent = ScreenGui
-    window.BackgroundColor3 = self.theme.windowBackground
+    window.BackgroundColor3 = theme.windowBackground
     window.BackgroundTransparency = 0.1
     window.BorderSizePixel = 0
     window.ClipsDescendants = true
@@ -81,7 +81,7 @@ function library:CreateWindow(name, fixed)
     local titleBar = Instance.new("Frame")
     titleBar.Name = "TitleBar"
     titleBar.Parent = window
-    titleBar.BackgroundColor3 = self.theme.background
+    titleBar.BackgroundColor3 = theme.background
     titleBar.BackgroundTransparency = 0.5
     titleBar.BorderSizePixel = 0
     titleBar.Size = UDim2.new(1, 0, 0, 30)
@@ -98,7 +98,7 @@ function library:CreateWindow(name, fixed)
     title.Size = UDim2.new(1, -50, 1, 0)
     title.Font = Enum.Font.GothamBold
     title.Text = name
-    title.TextColor3 = self.theme.foreground
+    title.TextColor3 = theme.foreground
     title.TextSize = 14
     title.TextXAlignment = Enum.TextXAlignment.Left
 
@@ -109,7 +109,7 @@ function library:CreateWindow(name, fixed)
     toggleButton.Size = UDim2.new(0, 20, 0, 20)
     toggleButton.Position = UDim2.new(1, -25, 0.5, -10)
     toggleButton.Text = "-"
-    toggleButton.TextColor3 = self.theme.foreground
+    toggleButton.TextColor3 = theme.foreground
     toggleButton.Font = Enum.Font.GothamBold
     toggleButton.TextSize = 16
 
@@ -136,7 +136,7 @@ function library:CreateWindow(name, fixed)
     content.Position = UDim2.new(0, 0, 0, 30)
     content.Size = UDim2.new(1, 0, 1, -30)
     content.ScrollBarThickness = 4
-    content.ScrollBarImageColor3 = self.theme.accent
+    content.ScrollBarImageColor3 = theme.accent
     content.ScrollBarImageTransparency = 0.8
     content.CanvasSize = UDim2.new(0, 0, 0, 0)
 
@@ -189,48 +189,23 @@ function library:CreateWindow(name, fixed)
         end)
     end
 
+    window.Fixed = fixed
     return { Window = window, Content = content, Fixed = fixed }
 end
 
+
 ------------------------------------------------
--- CreateItem – 此函式只建立一個可展開選項的按鈕項目
-function library:CreateItem(parent, name, callback)
-    local item = Instance.new("Frame")
-    item.Name = name
-    item.Parent = parent
-    item.BackgroundColor3 = self.theme.background
-    item.BackgroundTransparency = 0.9
-    item.Size = UDim2.new(1, 0, 0, 32) -- Initial size for just the button
-    item.ClipsDescendants = true
-
-    local layout = Instance.new("UIListLayout") -- Add UIListLayout to manage button and settings
-    layout.Parent = item
-    layout.SortOrder = Enum.SortOrder.LayoutOrder
-    layout.Padding = UDim.new(0, 0) -- No padding between button and settings
-
-    local corner = Instance.new("UICorner")
-    corner.CornerRadius = UDim.new(0, 4)
-    corner.Parent = item
-
-    local buttonContainer = Instance.new("Frame") -- Container for the button to control background
-    buttonContainer.Name = "ButtonContainer"
-    buttonContainer.Parent = item
-    buttonContainer.BackgroundTransparency = 1
-    buttonContainer.Size = UDim2.new(1, 0, 0, 32)
-
-    local buttonCorner = Instance.new("UICorner")
-    buttonCorner.CornerRadius = UDim.new(0, 4)
-    buttonCorner.Parent = buttonContainer
-
+-- CreateItem
+local function createItemButton(item, name, callback, settingsContainer)
     local button = Instance.new("TextButton")
     button.Name = "Button"
-    button.Parent = buttonContainer
+    button.Parent = item
     button.BackgroundTransparency = 1
     button.Size = UDim2.new(1, -30, 0, 32)
     button.Position = UDim2.new(0, 0, 0, 0)
     button.Font = Enum.Font.Gotham
     button.Text = name
-    button.TextColor3 = self.theme.foreground
+    button.TextColor3 = theme.foreground
     button.TextSize = 13
     button.TextXAlignment = Enum.TextXAlignment.Left
     button.AutoButtonColor = false
@@ -239,64 +214,107 @@ function library:CreateItem(parent, name, callback)
     padding.Parent = button
     padding.PaddingLeft = UDim.new(0, 10)
 
-    local settingsContainer = Instance.new("Frame") -- Settings container, initially hidden
-    settingsContainer.Name = "SettingsContainer"
-    settingsContainer.Parent = item
-    settingsContainer.BackgroundTransparency = 1
-    settingsContainer.Size = UDim2.new(1, 0, 0, 0) -- Initially hidden (height 0)
-    settingsContainer.ClipsDescendants = true
-    settingsContainer.Visible = false -- Initially hidden
+    local toggleIndicator = Instance.new("Frame")
+    toggleIndicator.Name = "ToggleIndicator"
+    toggleIndicator.Parent = item
+    toggleIndicator.Size = UDim2.new(0, 6, 0, 6)
+    toggleIndicator.Position = UDim2.new(1, -20, 0.5, -3)
+    toggleIndicator.BackgroundColor3 = theme.accent
+    toggleIndicator.BackgroundTransparency = 1
+    toggleIndicator.BorderSizePixel = 0
+    toggleIndicator.Visible = false
 
-    local settingsLayout = Instance.new("UIListLayout") -- Layout for settings inside the container
-    settingsLayout.Parent = settingsContainer
-    settingsLayout.SortOrder = Enum.SortOrder.LayoutOrder
-    settingsLayout.Padding = UDim.new(0, 4)
-
-    local settingsPadding = Instance.new("UIPadding")
-    settingsPadding.Parent = settingsContainer
-    settingsPadding.PaddingLeft = UDim.new(0, 8)
-    settingsPadding.PaddingRight = UDim.new(0, 8)
-    settingsPadding.PaddingTop = UDim.new(0, 8)
-    settingsPadding.PaddingBottom = UDim.new(0, 8)
+    local indicatorCorner = Instance.new("UICorner")
+    indicatorCorner.CornerRadius = UDim.new(0, 3)
+    indicatorCorner.Parent = toggleIndicator
 
 
     local toggled = false
     button.MouseButton1Click:Connect(function()
         toggled = not toggled
+        toggleIndicator.Visible = toggled
         if toggled then
-            CreateTween(buttonContainer, {BackgroundColor3 = Color3.fromRGB(255,255,255), BackgroundTransparency = 0}, 0.2):Play()
+            CreateTween(item, {BackgroundColor3 = Color3.fromRGB(255,255,255), BackgroundTransparency = 0}, 0.2):Play()
             CreateTween(button, {TextColor3 = Color3.fromRGB(0,0,0)}, 0.2):Play()
-            settingsContainer.Visible = true -- Show settings
-            local targetHeight = settingsContainer.UIListLayout.AbsoluteContentSize.Y + settingsPadding.PaddingTop.Offset + settingsPadding.PaddingBottom.Offset -- Calculate height based on content
-            CreateTween(settingsContainer, {Size = UDim2.new(1, 0, 0, targetHeight)}, 0.3):Play() -- Animate settings container height
-            CreateTween(item, {Size = UDim2.new(1, 0, 0, 32 + targetHeight)}, 0.3):Play() -- Animate item height to include settings
         else
-            CreateTween(buttonContainer, {BackgroundColor3 = self.theme.background, BackgroundTransparency = 0.9}, 0.2):Play()
-            CreateTween(button, {TextColor3 = self.theme.foreground}, 0.2):Play()
-            CreateTween(settingsContainer, {Size = UDim2.new(1, 0, 0, 0)}, 0.3):Play() -- Animate settings container height to 0
-            CreateTween(item, {Size = UDim2.new(1, 0, 0, 32)}, 0.3):Play() -- Animate item height back to button only
-            wait(0.3) -- Wait for collapse animation to finish before hiding to prevent layout issues
-            settingsContainer.Visible = false -- Hide settings after collapse
+            CreateTween(item, {BackgroundColor3 = theme.background, BackgroundTransparency = 0.9}, 0.2):Play()
+            CreateTween(button, {TextColor3 = theme.foreground}, 0.2):Play()
         end
         if callback then
             callback(toggled)
         end
-    end)
 
-    item.SettingsContainer = settingsContainer -- Expose SettingsContainer
-    return item
+        if settingsContainer then
+            settingsContainer.Visible = not settingsContainer.Visible
+            local itemLayout = item:FindFirstChildOfClass("UILayout") or item:FindFirstChildOfClass("UIListLayout")
+            if itemLayout then
+                itemLayout:ApplyLayout()
+            end
+        end
+    end)
+    return button, toggleIndicator
 end
 
 
--- 可呼叫此函式為 item 附加一個「選項容器」，供你自行添加各類控制項
-function library:AttachSettings(item)
-    return item.SettingsContainer -- Now directly returns the SettingsContainer
+local function CreateItem(parent, name, callback)
+    local item = Instance.new("Frame")
+    item.Name = name
+    item.Parent = parent
+    item.BackgroundColor3 = theme.background
+    item.BackgroundTransparency = 0.9
+    item.Size = UDim2.new(1, 0, 0, 32)
+    item.ClipsDescendants = true
+
+    local corner = Instance.new("UICorner")
+    corner.CornerRadius = UDim.new(0, 4)
+    corner.Parent = item
+
+    local settingsContainer = nil
+    local itemButton, toggleIndicator = createItemButton(item, name, callback, settingsContainer)
+
+    return { Item = item, Button = itemButton, ToggleIndicator = toggleIndicator }
+end
+
+
+-- AttachSettings
+local function AttachSettings(item)
+    local existingContainer = item:FindFirstChild("SettingsContainer")
+    if not existingContainer then
+        local container = Instance.new("Frame")
+        container.Name = "SettingsContainer"
+        container.Parent = item
+        container.BackgroundTransparency = 1
+        container.Size = UDim2.new(1, 0, 0, 0)
+        container.ClipsDescendants = true
+        container.Visible = false
+
+        local layout = Instance.new("UIListLayout", container)
+        layout.SortOrder = Enum.SortOrder.LayoutOrder
+        layout.Padding = UDim.new(0, 4)
+        layout.FillDirection = Enum.FillDirection.Vertical
+
+        local padding = Instance.new("UIPadding")
+        padding.Parent = container
+        padding.PaddingLeft = UDim.new(0, 8)
+        padding.PaddingRight = UDim.new(0, 8)
+        padding.PaddingTop = UDim.new(0, 8)
+        padding.PaddingBottom = UDim.new(0, 8)
+
+        local itemButton = item:FindFirstChild("Button")
+        if itemButton then
+            itemButton:Destroy()
+            createItemButton(item, item.Name, nil, container)
+        end
+        return container
+    else
+        return existingContainer
+    end
 end
 
 
 ------------------------------------------------
--- CreateSlider – 現在可傳入 callback(value)
-function library:CreateSlider(parent, name, min, max, default, callback)
+-- CreateSlider
+local function CreateSlider(parent, name, min, max, default, callback)
     local slider = Instance.new("Frame")
     slider.Name = name
     slider.Parent = parent
@@ -310,14 +328,14 @@ function library:CreateSlider(parent, name, min, max, default, callback)
     title.Size = UDim2.new(1, 0, 0, 20)
     title.Font = Enum.Font.Gotham
     title.Text = name
-    title.TextColor3 = self.theme.foreground
+    title.TextColor3 = theme.foreground
     title.TextSize = 12
     title.TextXAlignment = Enum.TextXAlignment.Left
 
     local sliderBar = Instance.new("Frame")
     sliderBar.Name = "SliderBar"
     sliderBar.Parent = slider
-    sliderBar.BackgroundColor3 = self.theme.muted
+    sliderBar.BackgroundColor3 = theme.muted
     sliderBar.BorderSizePixel = 0
     sliderBar.Position = UDim2.new(0, 0, 1, -5)
     sliderBar.Size = UDim2.new(1, 0, 0, 2)
@@ -325,7 +343,7 @@ function library:CreateSlider(parent, name, min, max, default, callback)
     local sliderButton = Instance.new("Frame")
     sliderButton.Name = "SliderButton"
     sliderButton.Parent = sliderBar
-    sliderButton.BackgroundColor3 = self.theme.accent
+    sliderButton.BackgroundColor3 = theme.accent
     sliderButton.BorderSizePixel = 0
     sliderButton.Size = UDim2.new(0, 10, 0, 10)
     sliderButton.Position = UDim2.new((default - min) / (max - min), -0.5, 0.5, 0)
@@ -343,7 +361,7 @@ function library:CreateSlider(parent, name, min, max, default, callback)
     value.Size = UDim2.new(0, 30, 0, 20)
     value.Font = Enum.Font.Gotham
     value.Text = tostring(default)
-    value.TextColor3 = self.theme.foreground
+    value.TextColor3 = theme.foreground
     value.TextSize = 12
     value.TextXAlignment = Enum.TextXAlignment.Right
 
@@ -369,11 +387,12 @@ function library:CreateSlider(parent, name, min, max, default, callback)
             if callback then callback(newValue) end
         end
     end)
+    return slider
 end
 
 ------------------------------------------------
--- CreateRangeSlider – 可傳入 callback(minValue, maxValue)
-function library:CreateRangeSlider(parent, name, min, max, defaultMin, defaultMax, callback)
+-- CreateRangeSlider
+local function CreateRangeSlider(parent, name, min, max, defaultMin, defaultMax, callback)
     local slider = Instance.new("Frame")
     slider.Name = name
     slider.Parent = parent
@@ -387,7 +406,7 @@ function library:CreateRangeSlider(parent, name, min, max, defaultMin, defaultMa
     title.Size = UDim2.new(1, 0, 0, 20)
     title.Font = Enum.Font.Gotham
     title.Text = name
-    title.TextColor3 = self.theme.foreground
+    title.TextColor3 = theme.foreground
     title.TextSize = 12
     title.TextXAlignment = Enum.TextXAlignment.Left
 
@@ -399,14 +418,14 @@ function library:CreateRangeSlider(parent, name, min, max, defaultMin, defaultMa
     rangeValueLabel.Size = UDim2.new(0, 60, 0, 20)
     rangeValueLabel.Font = Enum.Font.Gotham
     rangeValueLabel.Text = defaultMin .. "-" .. defaultMax
-    rangeValueLabel.TextColor3 = self.theme.muted
+    rangeValueLabel.TextColor3 = theme.muted
     rangeValueLabel.TextSize = 12
     rangeValueLabel.TextXAlignment = Enum.TextXAlignment.Right
 
     local sliderBar = Instance.new("Frame")
     sliderBar.Name = "SliderBar"
     sliderBar.Parent = slider
-    sliderBar.BackgroundColor3 = self.theme.muted
+    sliderBar.BackgroundColor3 = theme.muted
     sliderBar.BorderSizePixel = 0
     sliderBar.Position = UDim2.new(0, 0, 1, -20)
     sliderBar.Size = UDim2.new(1, 0, 0, 2)
@@ -414,7 +433,7 @@ function library:CreateRangeSlider(parent, name, min, max, defaultMin, defaultMa
     local minSliderButton = Instance.new("Frame")
     minSliderButton.Name = "MinSliderButton"
     minSliderButton.Parent = sliderBar
-    minSliderButton.BackgroundColor3 = self.theme.accent
+    minSliderButton.BackgroundColor3 = theme.accent
     minSliderButton.BorderSizePixel = 0
     minSliderButton.Size = UDim2.new(0, 10, 0, 10)
     minSliderButton.Position = UDim2.new((defaultMin - min) / (max - min), -0.5, 0.5, 0)
@@ -426,7 +445,7 @@ function library:CreateRangeSlider(parent, name, min, max, defaultMin, defaultMa
     local maxSliderButton = Instance.new("Frame")
     maxSliderButton.Name = "MaxSliderButton"
     maxSliderButton.Parent = sliderBar
-    maxSliderButton.BackgroundColor3 = self.theme.accent
+    maxSliderButton.BackgroundColor3 = theme.accent
     maxSliderButton.BorderSizePixel = 0
     maxSliderButton.Size = UDim2.new(0, 10, 0, 10)
     maxSliderButton.Position = UDim2.new((defaultMax - min) / (max - min), -0.5, 0.5, 0)
@@ -475,11 +494,12 @@ function library:CreateRangeSlider(parent, name, min, max, defaultMin, defaultMa
             end
         end
     end)
+    return slider
 end
 
 ------------------------------------------------
--- CreateToggle – 可傳入 callback(state)
-function library:CreateToggle(parent, name, callback)
+-- CreateToggle
+local function CreateToggle(parent, name, callback)
     local toggle = Instance.new("Frame")
     toggle.Name = name
     toggle.Parent = parent
@@ -493,14 +513,14 @@ function library:CreateToggle(parent, name, callback)
     title.Size = UDim2.new(1, -30, 1, 0)
     title.Font = Enum.Font.Gotham
     title.Text = name
-    title.TextColor3 = self.theme.foreground
+    title.TextColor3 = theme.foreground
     title.TextSize = 12
     title.TextXAlignment = Enum.TextXAlignment.Left
 
     local toggleButton = Instance.new("TextButton")
     toggleButton.Name = "ToggleButton"
     toggleButton.Parent = toggle
-    toggleButton.BackgroundColor3 = self.theme.muted
+    toggleButton.BackgroundColor3 = theme.muted
     toggleButton.BorderSizePixel = 0
     toggleButton.Position = UDim2.new(1, -25, 0.5, -10)
     toggleButton.Size = UDim2.new(0, 20, 0, 20)
@@ -514,7 +534,7 @@ function library:CreateToggle(parent, name, callback)
     toggleInner.Name = "ToggleInner"
     toggleInner.Parent = toggleButton
     toggleInner.AnchorPoint = Vector2.new(0.5, 0.5)
-    toggleInner.BackgroundColor3 = self.theme.accent
+    toggleInner.BackgroundColor3 = theme.accent
     toggleInner.BorderSizePixel = 0
     toggleInner.Position = UDim2.new(0.5, 0, 0.5, 0)
     toggleInner.Size = UDim2.new(0, 0, 0, 0)
@@ -533,11 +553,12 @@ function library:CreateToggle(parent, name, callback)
         end
         if callback then callback(toggled) end
     end)
+    return toggle
 end
 
 ------------------------------------------------
--- CreateDropdown – 可傳入 callback(option)
-function library:CreateDropdown(parent, name, options, callback)
+-- CreateDropdown
+local function CreateDropdown(parent, name, options, callback)
     local container = Instance.new("Frame")
     container.Name = name .. "Container"
     container.Parent = parent
@@ -553,12 +574,12 @@ function library:CreateDropdown(parent, name, options, callback)
     local dropdownButton = Instance.new("TextButton")
     dropdownButton.Name = "DropdownButton"
     dropdownButton.Parent = container
-    dropdownButton.BackgroundColor3 = self.theme.muted
+    dropdownButton.BackgroundColor3 = theme.muted
     dropdownButton.BorderSizePixel = 0
     dropdownButton.Size = UDim2.new(1, 0, 0, 25)
     dropdownButton.Font = Enum.Font.Gotham
     dropdownButton.Text = options[1]
-    dropdownButton.TextColor3 = self.theme.foreground
+    dropdownButton.TextColor3 = theme.foreground
     dropdownButton.TextSize = 12
     dropdownButton.TextXAlignment = Enum.TextXAlignment.Left
 
@@ -573,14 +594,20 @@ function library:CreateDropdown(parent, name, options, callback)
     local dropdownList = Instance.new("Frame")
     dropdownList.Name = "DropdownList"
     dropdownList.Parent = container
-    dropdownList.BackgroundColor3 = self.theme.windowBackground
+    dropdownList.BackgroundColor3 = theme.windowBackground
     dropdownList.BorderSizePixel = 0
     dropdownList.Size = UDim2.new(1, 0, 0, #options * 25)
     dropdownList.Visible = false
+    dropdownList.ZIndex = 2
 
     local listLayout = Instance.new("UIListLayout")
     listLayout.Parent = dropdownList
     listLayout.SortOrder = Enum.SortOrder.LayoutOrder
+
+    local dropdownListCorner = Instance.new("UICorner")
+    dropdownListCorner.CornerRadius = UDim.new(0, 4)
+    dropdownListCorner.Parent = dropdownList
+
 
     for i, option in ipairs(options) do
         local optionButton = Instance.new("TextButton")
@@ -590,9 +617,10 @@ function library:CreateDropdown(parent, name, options, callback)
         optionButton.Size = UDim2.new(1, 0, 0, 25)
         optionButton.Font = Enum.Font.Gotham
         optionButton.Text = option
-        optionButton.TextColor3 = self.theme.foreground
+        optionButton.TextColor3 = theme.foreground
         optionButton.TextSize = 12
         optionButton.TextXAlignment = Enum.TextXAlignment.Left
+        optionButton.AutoButtonColor = false
 
         local optionPadding = Instance.new("UIPadding")
         optionPadding.Parent = optionButton
@@ -614,6 +642,7 @@ function library:CreateDropdown(parent, name, options, callback)
             container.Size = UDim2.new(1, 0, 0, 25)
         end
     end)
+    return container
 end
 
 ------------------------------------------------
@@ -639,17 +668,49 @@ ScreenGui:GetPropertyChangedSignal("AbsoluteSize"):Connect(function()
 end)
 
 ------------------------------------------------
--- 建立預設 mainWindow – 用於顯示所有視窗的 toggle 項
-library.mainWindow = library:CreateWindow("Main", true)
-library.mainWindow.Window.Position = UDim2.new(0, 10, 0, 10)
+-- 建立預設 mainWindow
+local mainWindow = CreateWindow("Main", true)
+mainWindow.Window.Position = UDim2.new(0, 10, 0, 10)
 
--- 函式：將一個視窗的開關項加入 mainWindow 內，點選後可切換對應視窗的顯示與隱藏
-function library:AddWindowToggle(windowInstance)
-    local item = library:CreateItem(library.mainWindow.Content, windowInstance.Window.Name, function(state)
-        -- You can add specific logic here if needed when the window toggle in mainWindow is clicked
+-- AddWindowToggle
+local function AddWindowToggle(windowInstance)
+    local item = CreateItem(mainWindow.Content, windowInstance.Window.Name, function(state)
         windowInstance.Window.Visible = state
     end)
     return item
 end
 
-return library
+
+-- Example Usage within the Script:
+local testWindow = CreateWindow("Test Window")
+AddWindowToggle(testWindow)
+
+local item1 = CreateItem(testWindow.Content, "My Item")
+local settings1 = AttachSettings(item1.Item)
+
+if settings1 then
+    CreateSlider(settings1, "Slider Setting", 0, 100, 50, function(value)
+        print("Slider Value (Item 1):", value)
+    end)
+    CreateToggle(settings1, "Toggle Setting", function(state)
+        print("Toggle State (Item 1):", state)
+    end)
+    CreateDropdown(settings1, "Dropdown Setting", {"Option A", "Option B", "Option C"}, function(option)
+        print("Dropdown Option (Item 1):", option)
+    end)
+    CreateRangeSlider(settings1, "Range Slider", 0, 100, 25, 75, function(minVal, maxVal)
+        print("Range Slider (Item 1):", minVal, "-", maxVal)
+    end)
+end
+
+local item2 = CreateItem(testWindow.Content, "Another Item")
+local settings2 = AttachSettings(item2.Item)
+
+if settings2 then
+    CreateSlider(settings2, "Volume", 0, 1, 0.5, function(value)
+        print("Volume (Item 2):", value)
+    end)
+    CreateToggle(settings2, "Mute", function(state)
+        print("Mute (Item 2):", state)
+    end)
+end
