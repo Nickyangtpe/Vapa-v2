@@ -54,7 +54,6 @@ function library:CreateWindow(name, fixed)
     window.ClipsDescendants = true
     window.ZIndex = WindowManager.zIndex
     WindowManager.zIndex = WindowManager.zIndex + 1
-    window.Fixed = fixed -- Store fixed property in the window instance
 
     local defaultWidth = 220
     local defaultHeight = 300
@@ -195,15 +194,14 @@ end
 
 ------------------------------------------------
 -- CreateItem – 此函式只建立一個按鈕項目，不會自動產生預設選項
-function library:CreateItem(parent, name) -- Removed callback from here, handle toggle logic internally
+function library:CreateItem(parent, name, callback)
     local item = Instance.new("Frame")
     item.Name = name
     item.Parent = parent
     item.BackgroundColor3 = self.theme.background
     item.BackgroundTransparency = 0.9
-    item.Size = UDim2.new(1, 0, 0, 32) -- Base item height
+    item.Size = UDim2.new(1, 0, 0, 32) -- Adjusted initial item height
     item.ClipsDescendants = true
-    item.expandedSettings = false -- Track settings container expansion state
 
     local corner = Instance.new("UICorner")
     corner.CornerRadius = UDim.new(0, 4)
@@ -226,10 +224,11 @@ function library:CreateItem(parent, name) -- Removed callback from here, handle 
     padding.Parent = button
     padding.PaddingLeft = UDim.new(0, 10)
 
-    local settingsContainer = library:AttachSettings(item)
-    settingsContainer.Visible = false -- Initially hide the settings container
-
     local toggled = false
+
+    local settingsContainer = library:AttachSettings(item)
+    settingsContainer.Visible = false -- Initially hide settings
+
     button.MouseButton1Click:Connect(function()
         toggled = not toggled
         if toggled then
@@ -239,20 +238,15 @@ function library:CreateItem(parent, name) -- Removed callback from here, handle 
             CreateTween(item, {BackgroundColor3 = self.theme.background, BackgroundTransparency = 0.9}, 0.2):Play()
             CreateTween(button, {TextColor3 = self.theme.foreground}, 0.2):Play()
         end
-
-        -- Toggle settings visibility and resize item
-        item.expandedSettings = not item.expandedSettings
-        settingsContainer.Visible = item.expandedSettings
-        if item.expandedSettings then
-            local settingsHeight = settingsContainer.UIListLayout.AbsoluteContentSize.Y + settingsContainer.UIPadding.PaddingBottom.Offset + settingsContainer.UIPadding.PaddingTop.Offset
-            CreateTween(item, {Size = UDim2.new(1, 0, 0, 32 + settingsHeight)}, 0.2):Play() -- Expand item height
-        else
-            CreateTween(item, {Size = UDim2.new(1, 0, 0, 32)}, 0.2):Play() -- Collapse item height to base height
+        if callback then
+            callback(toggled)
         end
+        settingsContainer.Visible = not settingsContainer.Visible -- Toggle settings visibility
     end)
 
     return item
 end
+
 
 -- 可呼叫此函式為 item 附加一個「選項容器」，供你自行添加各類控制項
 function library:AttachSettings(item)
@@ -261,35 +255,34 @@ function library:AttachSettings(item)
         container.Name = "SettingsContainer"
         container.Parent = item
         container.BackgroundTransparency = 1
-        container.Visible = false -- Initially hidden
-        container.Size = UDim2.new(1, 0, 0, 0)  -- Let content dictate height
-        container.Position = UDim2.new(0, 0, 1, 0) -- Position below the item button
-        container.AnchorPoint = Vector2.new(0, 0)
+        container.Size = UDim2.new(1, 0, 0, 0)  -- 初始隱藏，高度為 0
+        container.Position = UDim2.new(0, 0, 1, 0) -- Positioned below the item
+        container.ClipsDescendants = true -- Clip settings if they go outside
 
         local layout = Instance.new("UIListLayout", container)
         layout.SortOrder = Enum.SortOrder.LayoutOrder
         layout.Padding = UDim.new(0, 4)
-        container.UIListLayout = layout -- Store layout for easier access
+        layout.VerticalAlignment = Enum.VerticalAlignment.Top -- Ensure items are at the top
 
-        local padding = Instance.new("UIPadding", container)
+        local padding = Instance.new("UIPadding")
+        padding.Parent = container
         padding.PaddingLeft = UDim.new(0, 8)
         padding.PaddingRight = UDim.new(0, 8)
         padding.PaddingTop = UDim.new(0, 8)
         padding.PaddingBottom = UDim.new(0, 8)
-        container.UIPadding = padding -- Store padding for easier access
+
+        layout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
+            if container.Visible then
+                CreateTween(container, {Size = UDim2.new(1, 0, 0, layout.AbsoluteContentSize.Y + 16)}, 0.2):Play()
+            else
+                container.Size = UDim2.new(1, 0, 0, 0) -- Collapse when hidden
+            end
+        end)
+
 
         return container
-    end
-    return item:FindFirstChild("SettingsContainer")
-end
-
--- Function to add a setting UI element to an item's settings container
-function library:AddSetting(item, settingUIElement)
-    local settingsContainer = item:FindFirstChild("SettingsContainer")
-    if settingsContainer then
-        settingUIElement.Parent = settingsContainer
     else
-        error("SettingsContainer not found on item: " .. item.Name)
+        return item:FindFirstChild("SettingsContainer")
     end
 end
 
@@ -645,26 +638,10 @@ library.mainWindow.Window.Position = UDim2.new(0, 10, 0, 10)
 
 -- 函式：將一個視窗的開關項加入 mainWindow 內，點選後可切換對應視窗的顯示與隱藏
 function library:AddWindowToggle(windowInstance)
-    local item = library:CreateItem(library.mainWindow.Content, windowInstance.Window.Name) -- Removed callback here
-    local toggleCallback = function(state)
+    local item = library:CreateItem(library.mainWindow.Content, windowInstance.Window.Name, function(state)
         windowInstance.Window.Visible = state
-    end
-    item.Button.MouseButton1Click:Connect(function() -- Connect toggle logic to the item's button click
-        toggleCallback(not windowInstance.Window.Visible) -- Toggle window visibility on item click
-        -- Update item's visual toggle state here if needed based on windowInstance.Window.Visible
-        local toggled = windowInstance.Window.Visible
-        local button = item:FindFirstChild("Button")
-        if toggled then
-            CreateTween(item, {BackgroundColor3 = Color3.fromRGB(255,255,255), BackgroundTransparency = 0}, 0.2):Play()
-            CreateTween(button, {TextColor3 = Color3.fromRGB(0,0,0)}, 0.2):Play()
-        else
-            CreateTween(item, {BackgroundColor3 = library.theme.background, BackgroundTransparency = 0.9}, 0.2):Play()
-            CreateTween(button, {TextColor3 = library.theme.foreground}, 0.2):Play()
-        end
     end)
-
     return item
 end
-
 
 return library
