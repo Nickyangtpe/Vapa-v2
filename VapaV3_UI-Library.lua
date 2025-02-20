@@ -200,8 +200,9 @@ function library:CreateItem(parent, name, callback)
     item.Parent = parent
     item.BackgroundColor3 = self.theme.background
     item.BackgroundTransparency = 0.9
-    item.Size = UDim2.new(1, 0, 0, 32) -- Adjusted initial item height
+    item.Size = UDim2.new(1, 0, 0, 32)
     item.ClipsDescendants = true
+    item.LayoutOrder = #parent:GetChildren() + 1 -- Ensure correct order in UIListLayout
 
     local corner = Instance.new("UICorner")
     corner.CornerRadius = UDim.new(0, 4)
@@ -224,29 +225,29 @@ function library:CreateItem(parent, name, callback)
     padding.Parent = button
     padding.PaddingLeft = UDim.new(0, 10)
 
-    local toggled = false
-
     local settingsContainer = library:AttachSettings(item)
-    settingsContainer.Visible = false -- Initially hide settings
+    settingsContainer.LayoutOrder = 100 -- Ensure settings are below the button
 
+    local toggled = false
     button.MouseButton1Click:Connect(function()
         toggled = not toggled
         if toggled then
             CreateTween(item, {BackgroundColor3 = Color3.fromRGB(255,255,255), BackgroundTransparency = 0}, 0.2):Play()
             CreateTween(button, {TextColor3 = Color3.fromRGB(0,0,0)}, 0.2):Play()
+            CreateTween(settingsContainer, {Size = UDim2.new(1, 0, 0, settingsContainer.ListLayout.AbsoluteContentSize.Y)}, 0.2):Play() -- Expand settings
+            settingsContainer.Visible = true
         else
             CreateTween(item, {BackgroundColor3 = self.theme.background, BackgroundTransparency = 0.9}, 0.2):Play()
             CreateTween(button, {TextColor3 = self.theme.foreground}, 0.2):Play()
+            CreateTween(settingsContainer, {Size = UDim2.new(1, 0, 0, 0)}, 0.2):Play() -- Collapse settings
+            settingsContainer.Visible = false
         end
         if callback then
             callback(toggled)
         end
-        settingsContainer.Visible = not settingsContainer.Visible -- Toggle settings visibility
     end)
-
     return item
 end
-
 
 -- 可呼叫此函式為 item 附加一個「選項容器」，供你自行添加各類控制項
 function library:AttachSettings(item)
@@ -256,33 +257,20 @@ function library:AttachSettings(item)
         container.Parent = item
         container.BackgroundTransparency = 1
         container.Size = UDim2.new(1, 0, 0, 0)  -- 初始隱藏，高度為 0
-        container.Position = UDim2.new(0, 0, 1, 0) -- Positioned below the item
-        container.ClipsDescendants = true -- Clip settings if they go outside
-
+        container.ClipsDescendants = true -- Clip content when collapsed
+        container.Visible = false -- Initially hidden
         local layout = Instance.new("UIListLayout", container)
         layout.SortOrder = Enum.SortOrder.LayoutOrder
         layout.Padding = UDim.new(0, 4)
-        layout.VerticalAlignment = Enum.VerticalAlignment.Top -- Ensure items are at the top
-
+        container.ListLayout = layout -- Store UIListLayout for easy access
         local padding = Instance.new("UIPadding")
         padding.Parent = container
-        padding.PaddingLeft = UDim.new(0, 8)
+        padding.PaddingLeft = UDim.new(0, 16) -- Indent settings slightly
         padding.PaddingRight = UDim.new(0, 8)
-        padding.PaddingTop = UDim.new(0, 8)
         padding.PaddingBottom = UDim.new(0, 8)
-
-        layout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
-            if container.Visible then
-                CreateTween(container, {Size = UDim2.new(1, 0, 0, layout.AbsoluteContentSize.Y + 16)}, 0.2):Play()
-            else
-                container.Size = UDim2.new(1, 0, 0, 0) -- Collapse when hidden
-            end
-        end)
-
-
         return container
     else
-        return item:FindFirstChild("SettingsContainer")
+        return item.SettingsContainer
     end
 end
 
