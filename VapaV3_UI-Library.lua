@@ -257,8 +257,10 @@ function library:AttachSettings(item)
         container.Size = UDim2.new(1, 0, 0, 0)  -- 初始隱藏
         container.ClipsDescendants = true
 
-        local layout = Instance.new("UIListLayout", container)
+        local layout = Instance.new("UIListLayout") -- 建立 UIListLayout
+        layout.Parent = container
         layout.SortOrder = Enum.SortOrder.LayoutOrder
+        container.Layout = layout -- 確保容器知道 layout 物件 (雖然 Parent 設定通常已足夠)
 
         local toggleSettings = Instance.new("TextButton")
         toggleSettings.Name = "ToggleSettings"
@@ -266,8 +268,8 @@ function library:AttachSettings(item)
         toggleSettings.BackgroundTransparency = 1
         toggleSettings.Size = UDim2.new(0, 20, 0, 20)
         toggleSettings.Position = UDim2.new(1, -30, 0, 6)
-        toggleSettings.Text = "⚙" -- Changed to gear icon
-        toggleSettings.TextColor3 = self.theme.muted -- Changed to muted theme color
+        toggleSettings.Text = "⚙"
+        toggleSettings.TextColor3 = self.theme.muted
         toggleSettings.Font = Enum.Font.GothamBold
         toggleSettings.TextSize = 16
         toggleSettings.AutoButtonColor = false
@@ -276,13 +278,17 @@ function library:AttachSettings(item)
         toggleSettings.MouseButton1Click:Connect(function()
             expanded = not expanded
             if expanded then
-                CreateTween(toggleSettings, {Rotation = 45}, 0.2):Play() -- Rotation animation
+                CreateTween(toggleSettings, {Rotation = 45}, 0.2):Play()
+                print("展開選項，AbsoluteContentSize.Y:", layout.AbsoluteContentSize.Y)
                 container.Size = UDim2.new(1, 0, 0, layout.AbsoluteContentSize.Y)
+                print("容器展開後大小:", container.Size)
             else
-                CreateTween(toggleSettings, {Rotation = 0}, 0.2):Play() -- Rotation animation back
+                CreateTween(toggleSettings, {Rotation = 0}, 0.2):Play()
                 container.Size = UDim2.new(1, 0, 0, 0)
+                print("收起選項，容器收起後大小:", container.Size)
             end
         end)
+        item.SettingsContainer = container -- 直接將 container 設為 item 的屬性，方便存取
     end
     return item.SettingsContainer
 end
