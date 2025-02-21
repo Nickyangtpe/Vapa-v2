@@ -1,4 +1,3 @@
--- 完整腳本：參考舊版樣式，包含齒輪展開/收起選項
 local UserInputService = game:GetService("UserInputService")
 local TweenService = game:GetService("TweenService")
 local RunService = game:GetService("RunService")
@@ -55,8 +54,8 @@ function library:CreateWindow(name, fixed)
     window.ZIndex = WindowManager.zIndex
     WindowManager.zIndex = WindowManager.zIndex + 1
 
-    -- 將 fixed 存入 window，供後續判斷使用
-    window.Fixed = fixed
+    -- 使用 Attributes 存儲固定視窗資訊
+    window:SetAttribute("Fixed", fixed)
 
     local defaultWidth = 220
     local defaultHeight = 300
@@ -617,7 +616,7 @@ ScreenGui:GetPropertyChangedSignal("AbsoluteSize"):Connect(function()
     for window, _ in pairs(WindowManager.windows) do
         if not window:IsDescendantOf(ScreenGui) then
             WindowManager.windows[window] = nil
-        elseif not window.Fixed then
+        elseif not window:GetAttribute("Fixed") then
             local defaultWidth = window.Size.X.Offset
             local defaultHeight = window.Size.Y.Offset
             local offset = WindowManager.windowOffset
