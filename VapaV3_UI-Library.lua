@@ -254,24 +254,31 @@ function library:AttachSettings(item)
         container.Name = "SettingsContainer"
         container.Parent = item
         container.BackgroundTransparency = 1
-        container.Size = UDim2.new(1, 0, 0, 0)  -- 初始隱藏
+        container.Position = UDim2.new(0, 32, 0, 0) -- 調整位置，移到按鈕下方
+        container.Size = UDim2.new(1, -30, 0, 0)  -- 初始隱藏，調整寬度
         container.ClipsDescendants = true
 
-        local layout = Instance.new("UIListLayout") -- 建立 UIListLayout
-        layout.Parent = container
+        local layout = Instance.new("UIListLayout", container)
         layout.SortOrder = Enum.SortOrder.LayoutOrder
-        container.Layout = layout -- 確保容器知道 layout 物件 (雖然 Parent 設定通常已足夠)
+        layout.Padding = UDim.new(0, 4) -- 增加 Padding
+
+        local padding = Instance.new("UIPadding") -- 增加 container 內部的 Padding
+        padding.Parent = container
+        padding.PaddingLeft = UDim.new(0, 8)
+        padding.PaddingRight = UDim.new(0, 8)
+        padding.PaddingTop = UDim.new(0, 4)
+        padding.PaddingBottom = UDim.new(0, 4)
 
         local toggleSettings = Instance.new("TextButton")
         toggleSettings.Name = "ToggleSettings"
         toggleSettings.Parent = item
         toggleSettings.BackgroundTransparency = 1
-        toggleSettings.Size = UDim2.new(0, 20, 0, 20)
-        toggleSettings.Position = UDim2.new(1, -30, 0, 6)
+        toggleSettings.Size = UDim2.new(0, 24, 0, 24) -- 調整齒輪按鈕大小
+        toggleSettings.Position = UDim2.new(1, -28, 0, 4) -- 調整齒輪按鈕位置
+        toggleSettings.Font = Enum.Font.GothamBold
         toggleSettings.Text = "⚙"
         toggleSettings.TextColor3 = self.theme.muted
-        toggleSettings.Font = Enum.Font.GothamBold
-        toggleSettings.TextSize = 16
+        toggleSettings.TextSize = 14
         toggleSettings.AutoButtonColor = false
 
         local expanded = false
@@ -279,19 +286,21 @@ function library:AttachSettings(item)
             expanded = not expanded
             if expanded then
                 CreateTween(toggleSettings, {Rotation = 45}, 0.2):Play()
-                print("展開選項，AbsoluteContentSize.Y:", layout.AbsoluteContentSize.Y)
-                container.Size = UDim2.new(1, 0, 0, layout.AbsoluteContentSize.Y)
-                print("容器展開後大小:", container.Size)
+                container.Size = UDim2.new(1, -30, 0, layout.AbsoluteContentSize.Y) -- 展開時調整高度
             else
                 CreateTween(toggleSettings, {Rotation = 0}, 0.2):Play()
-                container.Size = UDim2.new(1, 0, 0, 0)
-                print("收起選項，容器收起後大小:", container.Size)
+                container.Size = UDim2.new(1, -30, 0, 0) -- 收起時高度為 0
             end
         end)
-        item.SettingsContainer = container -- 直接將 container 設為 item 的屬性，方便存取
+         layout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function() -- 監聽內容大小變化
+            if expanded then
+                container.Size = UDim2.new(1, -30, 0, layout.AbsoluteContentSize.Y) -- 確保展開時高度正確
+            end
+        end)
     end
     return item.SettingsContainer
 end
+
 
 ------------------------------------------------
 -- CreateSlider – 現在可傳入 callback(value)
