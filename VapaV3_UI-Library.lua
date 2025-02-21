@@ -643,3 +643,5 @@ end)
 ------------------------------------------------
 -- 將 library 設定為全域變數，方便其他腳本存取
 _G.UILibrary = library
+
+return library
