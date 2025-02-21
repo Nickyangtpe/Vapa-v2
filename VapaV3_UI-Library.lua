@@ -1,3 +1,5 @@
+-- UILibrary (新版，參考舊版樣式，加上齒輪與動畫效果)
+
 local UserInputService = game:GetService("UserInputService")
 local TweenService = game:GetService("TweenService")
 local RunService = game:GetService("RunService")
@@ -190,10 +192,11 @@ function library:CreateWindow(name, fixed)
 
 	return { Window = window, Content = content, Fixed = fixed }
 end
+-- 別名 TagWindow 與 CreateWindow 功能相同
 library.TagWindow = library.CreateWindow
 
 ------------------------------------------------
--- CreateItem: 建立一個按鈕項目（預設不附帶內建選項）
+-- CreateItem – 只建立一個按鈕項目，預設不包含選項
 function library:CreateItem(parent, name, callback)
 	local item = Instance.new("Frame")
 	item.Name = name
@@ -211,7 +214,7 @@ function library:CreateItem(parent, name, callback)
 	button.Name = "Button"
 	button.Parent = item
 	button.BackgroundTransparency = 1
-	-- 預留右側 30 像素作為選項展開按鈕的位置
+	-- 留出右側 30 像素供放置齒輪（展開選項）的按鈕
 	button.Size = UDim2.new(1, -30, 0, 32)
 	button.Position = UDim2.new(0, 0, 0, 0)
 	button.Font = Enum.Font.Gotham
@@ -235,53 +238,58 @@ function library:CreateItem(parent, name, callback)
 			CreateTween(item, {BackgroundColor3 = self.theme.background, BackgroundTransparency = 0.9}, 0.2):Play()
 			CreateTween(button, {TextColor3 = self.theme.foreground}, 0.2):Play()
 		end
-		if callback then callback(toggled) end
+		if callback then
+			callback(toggled)
+		end
 	end)
 
 	return item
 end
 
 ------------------------------------------------
--- AttachSettings: 為 item 附加選項容器及齒輪按鈕（僅適用於 item，不可用於 window）
+-- AttachSettings – 為指定 item 附加選項容器與齒輪按鈕（僅限 item，不適用於 window）
 function library:AttachSettings(item)
+	-- 若傳入物件有 TitleBar，視為 window，不允許附加選項
 	if item:FindFirstChild("TitleBar") then
 		warn("AttachSettings: 不能在 window 上添加選項，請僅用於 item")
 		return nil
 	end
+
 	if not item:FindFirstChild("SettingsContainer") then
 		local container = Instance.new("Frame")
 		container.Name = "SettingsContainer"
 		container.Parent = item
 		container.BackgroundTransparency = 1
-		container.Size = UDim2.new(1, 0, 0, 0) -- 初始隱藏
+		-- 初始隱藏，可根據內容自動延展
+		container.Size = UDim2.new(1, 0, 0, 0)
 		container.ClipsDescendants = true
 
 		local layout = Instance.new("UIListLayout")
 		layout.Parent = container
 		layout.SortOrder = Enum.SortOrder.LayoutOrder
 
-		-- 建立齒輪按鈕
-		local gear = Instance.new("TextButton")
-		gear.Name = "ToggleSettings"
-		gear.Parent = item
-		gear.BackgroundTransparency = 1
-		gear.Size = UDim2.new(0, 20, 0, 20)
-		gear.Position = UDim2.new(1, -30, 0, 6)
-		gear.Text = "⚙"
-		gear.TextColor3 = self.theme.foreground
-		gear.Font = Enum.Font.GothamBold
-		gear.TextSize = 16
-		gear.AutoButtonColor = false
+		-- 使用齒輪圖示作為展開／收起按鈕，並搭配旋轉動畫
+		local gearButton = Instance.new("TextButton")
+		gearButton.Name = "ToggleSettings"
+		gearButton.Parent = item
+		gearButton.BackgroundTransparency = 1
+		gearButton.Size = UDim2.new(0, 20, 0, 20)
+		gearButton.Position = UDim2.new(1, -30, 0, 6)
+		gearButton.Text = "⚙"
+		gearButton.TextColor3 = self.theme.foreground
+		gearButton.Font = Enum.Font.GothamBold
+		gearButton.TextSize = 16
+		gearButton.AutoButtonColor = false
 
 		local expanded = false
-		gear.MouseButton1Click:Connect(function()
+		gearButton.MouseButton1Click:Connect(function()
 			expanded = not expanded
 			if expanded then
-				-- 旋轉齒輪並展開選項
-				CreateTween(gear, {Rotation = 45}, 0.2):Play()
+				-- 旋轉齒輪提示展開
+				CreateTween(gearButton, {Rotation = 45}, 0.2):Play()
 				container.Size = UDim2.new(1, 0, 0, layout.AbsoluteContentSize.Y)
 			else
-				CreateTween(gear, {Rotation = 0}, 0.2):Play()
+				CreateTween(gearButton, {Rotation = 0}, 0.2):Play()
 				container.Size = UDim2.new(1, 0, 0, 0)
 			end
 		end)
@@ -290,7 +298,7 @@ function library:AttachSettings(item)
 end
 
 ------------------------------------------------
--- CreateSlider: 建立滑桿，並傳入 callback(newValue)
+-- CreateSlider – 建立滑桿控制，傳入 callback(newValue)
 function library:CreateSlider(parent, name, min, max, default, callback)
 	local slider = Instance.new("Frame")
 	slider.Name = name
@@ -367,7 +375,7 @@ function library:CreateSlider(parent, name, min, max, default, callback)
 end
 
 ------------------------------------------------
--- CreateRangeSlider: 建立範圍滑桿，傳入 callback(minValue, maxValue)
+-- CreateRangeSlider – 建立範圍滑桿，傳入 callback(minValue, maxValue)
 function library:CreateRangeSlider(parent, name, min, max, defaultMin, defaultMax, callback)
 	local slider = Instance.new("Frame")
 	slider.Name = name
@@ -473,7 +481,7 @@ function library:CreateRangeSlider(parent, name, min, max, defaultMin, defaultMa
 end
 
 ------------------------------------------------
--- CreateToggle: 建立勾選開關，並傳入 callback(state)
+-- CreateToggle – 建立勾選開關，並傳入 callback(state)
 function library:CreateToggle(parent, name, callback)
 	local toggle = Instance.new("Frame")
 	toggle.Name = name
@@ -531,7 +539,7 @@ function library:CreateToggle(parent, name, callback)
 end
 
 ------------------------------------------------
--- CreateDropdown: 建立下拉選單，並傳入 callback(option)
+-- CreateDropdown – 建立下拉選單，並傳入 callback(option)
 function library:CreateDropdown(parent, name, options, callback)
 	local container = Instance.new("Frame")
 	container.Name = name .. "Container"
@@ -632,6 +640,19 @@ ScreenGui:GetPropertyChangedSignal("AbsoluteSize"):Connect(function()
 		end
 	end
 end)
+
+------------------------------------------------
+-- 建立預設 mainWindow – 用於顯示所有視窗的切換項
+library.mainWindow = library:CreateWindow("Main", true)
+library.mainWindow.Window.Position = UDim2.new(0, 10, 0, 10)
+
+-- AddWindowToggle – 將指定視窗的開關項加入 mainWindow，點選可顯示/隱藏視窗
+function library:AddWindowToggle(windowInstance)
+	local item = library:CreateItem(library.mainWindow.Content, windowInstance.Window.Name, function(state)
+		windowInstance.Window.Visible = state
+	end)
+	return item
+end
 
 ------------------------------------------------
 _G.UILibrary = library
