@@ -1,4 +1,4 @@
--- 以下為完整腳本（非 ModuleScript，可直接作為普通 LocalScript 使用）
+-- 完整腳本（參考舊版樣式，並修正齒輪、預設隱藏選項及 string.split 問題）
 
 local UserInputService = game:GetService("UserInputService")
 local TweenService = game:GetService("TweenService")
@@ -214,6 +214,7 @@ function library:CreateItem(parent, name, callback)
     button.Name = "Button"
     button.Parent = item
     button.BackgroundTransparency = 1
+    -- 留出右側 30 像素的空間，供日後加入其他控制項（例如齒輪按鈕）
     button.Size = UDim2.new(1, -30, 0, 32)
     button.Position = UDim2.new(0, 0, 0, 0)
     button.Font = Enum.Font.Gotham
@@ -245,17 +246,45 @@ function library:CreateItem(parent, name, callback)
 end
 
 ------------------------------------------------
--- 可呼叫此函式為 item 附加一個「選項容器」，供你自行添加各類控制項
+-- 為指定的 item 附加一個「選項容器」，供你自行添加各類控制項
+-- 此版本除了原版的容器建立外，額外在 item 右側加入一個齒輪按鈕（"⚙"），
+-- 初始狀態下容器 Size 為 0，只有點擊齒輪後才展開。
 function library:AttachSettings(item)
     if not item:FindFirstChild("SettingsContainer") then
         local container = Instance.new("Frame")
         container.Name = "SettingsContainer"
         container.Parent = item
         container.BackgroundTransparency = 1
-        container.Size = UDim2.new(1, 0, 0, 0)  -- 初始隱藏，可根據內容自動延展
-        local layout = Instance.new("UIListLayout", container)
+        container.Size = UDim2.new(1, 0, 0, 0)  -- 初始隱藏
+        container.ClipsDescendants = true
+
+        local layout = Instance.new("UIListLayout")
+        layout.Parent = container
         layout.SortOrder = Enum.SortOrder.LayoutOrder
-        return container
+
+        local gear = Instance.new("TextButton")
+        gear.Name = "ToggleSettings"
+        gear.Parent = item
+        gear.BackgroundTransparency = 1
+        gear.Size = UDim2.new(0, 20, 0, 20)
+        gear.Position = UDim2.new(1, -30, 0, 6)
+        gear.Text = "⚙"
+        gear.TextColor3 = self.theme.foreground
+        gear.Font = Enum.Font.GothamBold
+        gear.TextSize = 16
+        gear.AutoButtonColor = false
+
+        local expanded = false
+        gear.MouseButton1Click:Connect(function()
+            expanded = not expanded
+            if expanded then
+                gear.Rotation = 45
+                container.Size = UDim2.new(1, 0, 0, layout.AbsoluteContentSize.Y)
+            else
+                gear.Rotation = 0
+                container.Size = UDim2.new(1, 0, 0, 0)
+            end
+        end)
     end
     return item.SettingsContainer
 end
@@ -427,13 +456,21 @@ function library:CreateRangeSlider(parent, name, min, max, defaultMin, defaultMa
             local percentage = math.clamp(relativePos.X / sliderBar.AbsoluteSize.X, 0, 1)
             local newValue = math.floor(min + (max - min) * percentage)
             if draggingMin then
-                local currentMax = tonumber(string.split(rangeValueLabel.Text, "-")[2])
+                local parts = {}
+                for part in string.gmatch(rangeValueLabel.Text, "([^%-]+)") do
+                    table.insert(parts, part)
+                end
+                local currentMax = tonumber(parts[2])
                 if newValue > currentMax then newValue = currentMax end
                 minSliderButton.Position = UDim2.new(percentage, -0.5, 0.5, 0)
                 rangeValueLabel.Text = tostring(newValue) .. "-" .. tostring(currentMax)
                 if callback then callback(newValue, currentMax) end
             elseif draggingMax then
-                local currentMin = tonumber(string.split(rangeValueLabel.Text, "-")[1])
+                local parts = {}
+                for part in string.gmatch(rangeValueLabel.Text, "([^%-]+)") do
+                    table.insert(parts, part)
+                end
+                local currentMin = tonumber(parts[1])
                 if newValue < currentMin then newValue = currentMin end
                 maxSliderButton.Position = UDim2.new(percentage, -0.5, 0.5, 0)
                 rangeValueLabel.Text = tostring(currentMin) .. "-" .. tostring(newValue)
