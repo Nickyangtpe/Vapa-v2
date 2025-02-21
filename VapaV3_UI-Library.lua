@@ -266,8 +266,8 @@ function library:AttachSettings(item)
         toggleSettings.BackgroundTransparency = 1
         toggleSettings.Size = UDim2.new(0, 20, 0, 20)
         toggleSettings.Position = UDim2.new(1, -30, 0, 6)
-        toggleSettings.Text = "⚙"
-        toggleSettings.TextColor3 = self.theme.foreground
+        toggleSettings.Text = "⚙" -- Changed to gear icon
+        toggleSettings.TextColor3 = self.theme.muted -- Changed to muted theme color
         toggleSettings.Font = Enum.Font.GothamBold
         toggleSettings.TextSize = 16
         toggleSettings.AutoButtonColor = false
@@ -276,10 +276,10 @@ function library:AttachSettings(item)
         toggleSettings.MouseButton1Click:Connect(function()
             expanded = not expanded
             if expanded then
-                toggleSettings.Rotation = 45
+                CreateTween(toggleSettings, {Rotation = 45}, 0.2):Play() -- Rotation animation
                 container.Size = UDim2.new(1, 0, 0, layout.AbsoluteContentSize.Y)
             else
-                toggleSettings.Rotation = 0
+                CreateTween(toggleSettings, {Rotation = 0}, 0.2):Play() -- Rotation animation back
                 container.Size = UDim2.new(1, 0, 0, 0)
             end
         end)
