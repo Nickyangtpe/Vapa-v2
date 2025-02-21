@@ -1,6 +1,3 @@
--- UILibrary Script (普通腳本，不是 ModuleScript)
--- 此腳本提供創建窗口、項目以及可附加選項（勾選、滑桿、下拉選單等）的功能
-
 local UserInputService = game:GetService("UserInputService")
 local TweenService = game:GetService("TweenService")
 local RunService = game:GetService("RunService")
@@ -255,8 +252,14 @@ end
 
 ------------------------------------------------
 -- 為指定的 item 附加選項容器（供加入滑桿、勾選、下拉選單等）
--- ※ 此函式同時會在該 item 右側加入一個展開／收起按鈕，點擊後可控制選項區域展開
+-- ※ 注意：若傳入的物件為 window（含 TitleBar），則不允許附加選項
 function library:AttachSettings(item)
+	-- 若 item 為 window（檢查有無 TitleBar）則不處理
+	if item:FindFirstChild("TitleBar") then
+		warn("AttachSettings: 不能在 window 上添加選項，請僅用於 item")
+		return nil
+	end
+	
 	if not item:FindFirstChild("SettingsContainer") then
 		local container = Instance.new("Frame")
 		container.Name = "SettingsContainer"
@@ -269,26 +272,28 @@ function library:AttachSettings(item)
 		layout.Parent = container
 		layout.SortOrder = Enum.SortOrder.LayoutOrder
 
-		-- 新增一個用於展開/收起選項的按鈕
+		-- 使用齒輪圖示作為展開/收起按鈕
 		local toggleSettings = Instance.new("TextButton")
 		toggleSettings.Name = "ToggleSettings"
 		toggleSettings.Parent = item
 		toggleSettings.BackgroundTransparency = 1
 		toggleSettings.Size = UDim2.new(0, 20, 0, 20)
 		toggleSettings.Position = UDim2.new(1, -30, 0, 6)
-		toggleSettings.Text = "+"
+		toggleSettings.Text = "⚙"
 		toggleSettings.TextColor3 = self.theme.foreground
 		toggleSettings.Font = Enum.Font.GothamBold
-		toggleSettings.TextSize = 14
+		toggleSettings.TextSize = 16
+		toggleSettings.AutoButtonColor = false
 
 		local expanded = false
 		toggleSettings.MouseButton1Click:Connect(function()
 			expanded = not expanded
 			if expanded then
-				toggleSettings.Text = "-"
+				-- 旋轉齒輪提供展開效果
+				toggleSettings.Rotation = 45
 				container.Size = UDim2.new(1, 0, 0, layout.AbsoluteContentSize.Y)
 			else
-				toggleSettings.Text = "+"
+				toggleSettings.Rotation = 0
 				container.Size = UDim2.new(1, 0, 0, 0)
 			end
 		end)
