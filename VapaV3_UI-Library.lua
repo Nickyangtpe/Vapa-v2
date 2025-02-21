@@ -1,4 +1,5 @@
--- UILibrary 腳本
+-- 以下為完整腳本（非 ModuleScript，可直接作為普通 LocalScript 使用）
+
 local UserInputService = game:GetService("UserInputService")
 local TweenService = game:GetService("TweenService")
 local RunService = game:GetService("RunService")
@@ -608,7 +609,7 @@ end)
 library.mainWindow = library:CreateWindow("Main", true)
 library.mainWindow.Window.Position = UDim2.new(0, 10, 0, 10)
 
--- 將一個視窗的開關項加入 mainWindow，點選後可切換對應視窗的顯示與隱藏
+-- 將一個視窗的開關項加入 mainWindow 內，點選後可切換對應視窗的顯示與隱藏
 function library:AddWindowToggle(windowInstance)
     local item = library:CreateItem(library.mainWindow.Content, windowInstance.Window.Name, function(state)
         windowInstance.Window.Visible = state
@@ -616,6 +617,4 @@ function library:AddWindowToggle(windowInstance)
     return item
 end
 
-------------------------------------------------
-_G.UILibrary = library
 return library
