@@ -1,3 +1,4 @@
+-- 完整腳本：參考舊版樣式，包含齒輪展開/收起選項
 local UserInputService = game:GetService("UserInputService")
 local TweenService = game:GetService("TweenService")
 local RunService = game:GetService("RunService")
@@ -54,6 +55,9 @@ function library:CreateWindow(name, fixed)
     window.ZIndex = WindowManager.zIndex
     WindowManager.zIndex = WindowManager.zIndex + 1
 
+    -- 將 fixed 存入 window，供後續判斷使用
+    window.Fixed = fixed
+
     local defaultWidth = 220
     local defaultHeight = 300
     window.Size = UDim2.new(0, defaultWidth, 0, defaultHeight)
@@ -72,7 +76,6 @@ function library:CreateWindow(name, fixed)
         window.Position = UDim2.new(0, WINDOW_PADDING, 0, WINDOW_PADDING)
         WindowManager.windows[window] = true
     end
-    window.Fixed = fixed  -- 將固定資訊存入 window 中
 
     local corner = Instance.new("UICorner")
     corner.CornerRadius = UDim.new(0, 6)
@@ -213,7 +216,6 @@ function library:CreateItem(parent, name, callback)
     button.Name = "Button"
     button.Parent = item
     button.BackgroundTransparency = 1
-    -- 留出右側 30 像素的空間，供日後加入其他控制項（例如展開選項的按鈕）
     button.Size = UDim2.new(1, -30, 0, 32)
     button.Position = UDim2.new(0, 0, 0, 0)
     button.Font = Enum.Font.Gotham
@@ -245,8 +247,8 @@ function library:CreateItem(parent, name, callback)
 end
 
 ------------------------------------------------
--- 為指定的 item 附加一個「選項容器」，供你自行添加各類控制項
--- ※ 此函式會在 item 上加入一個齒輪按鈕，點擊後展開／收起選項
+-- 可呼叫此函式為 item 附加一個「選項容器」，供你自行添加各類控制項
+-- ※ 按下 item 上的齒輪後才展開/收起選項，初始為隱藏狀態
 function library:AttachSettings(item)
     if not item:FindFirstChild("SettingsContainer") then
         local container = Instance.new("Frame")
@@ -255,10 +257,8 @@ function library:AttachSettings(item)
         container.BackgroundTransparency = 1
         container.Size = UDim2.new(1, 0, 0, 0)  -- 初始隱藏
         container.ClipsDescendants = true
-        container.Visible = false
 
-        local layout = Instance.new("UIListLayout")
-        layout.Parent = container
+        local layout = Instance.new("UIListLayout", container)
         layout.SortOrder = Enum.SortOrder.LayoutOrder
 
         local toggleSettings = Instance.new("TextButton")
@@ -272,19 +272,16 @@ function library:AttachSettings(item)
         toggleSettings.Font = Enum.Font.GothamBold
         toggleSettings.TextSize = 16
         toggleSettings.AutoButtonColor = false
-        toggleSettings.ZIndex = 10
 
         local expanded = false
         toggleSettings.MouseButton1Click:Connect(function()
             expanded = not expanded
             if expanded then
                 toggleSettings.Rotation = 45
-                container.Visible = true
                 container.Size = UDim2.new(1, 0, 0, layout.AbsoluteContentSize.Y)
             else
                 toggleSettings.Rotation = 0
                 container.Size = UDim2.new(1, 0, 0, 0)
-                container.Visible = false
             end
         end)
     end
@@ -637,7 +634,7 @@ end)
 
 ------------------------------------------------
 -- 建立預設 mainWindow – 用於顯示所有視窗的 toggle 項
-library.mainWindow = library:CreateWindow("VAPA V3", true)
+library.mainWindow = library:CreateWindow("Main", true)
 library.mainWindow.Window.Position = UDim2.new(0, 10, 0, 10)
 
 -- 將一個視窗的開關項加入 mainWindow 內，點選後可切換對應視窗的顯示與隱藏
@@ -648,5 +645,4 @@ function library:AddWindowToggle(windowInstance)
     return item
 end
 
-_G.UILibrary = library
 return library
