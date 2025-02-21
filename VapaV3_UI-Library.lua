@@ -3,8 +3,6 @@ local TweenService = game:GetService("TweenService")
 local RunService = game:GetService("RunService")
 
 local library = {}
-
--- 主題顏色設定
 library.theme = {
 	background = Color3.fromRGB(25, 25, 25),
 	windowBackground = Color3.fromRGB(30, 30, 30),
@@ -21,7 +19,6 @@ local WINDOW_PADDING = 10
 local DRAG_THRESHOLD = 5
 local MOBILE = UserInputService.TouchEnabled
 
--- 建立 ScreenGui
 local ScreenGui = Instance.new("ScreenGui")
 ScreenGui.Name = "VAPE"
 ScreenGui.ResetOnSpawn = false
@@ -33,12 +30,10 @@ else
 	ScreenGui.Parent = game:GetService("CoreGui")
 end
 
--- Tween 輔助函式
 local function CreateTween(instance, properties, duration)
 	return TweenService:Create(instance, TweenInfo.new(duration or 0.2, Enum.EasingStyle.Quad), properties)
 end
 
--- 窗口管理器，用於管理拖曳和層級順序
 local WindowManager = { activeWindow = nil, zIndex = 1, windows = {}, windowOffset = 0 }
 function WindowManager:BringToFront(window)
 	self.zIndex = self.zIndex + 1
@@ -47,7 +42,7 @@ function WindowManager:BringToFront(window)
 end
 
 ------------------------------------------------
--- 創建窗口 (亦稱 TagWindow，與 CreateWindow 相同)
+-- CreateWindow (或 TagWindow) – 與舊版一致
 function library:CreateWindow(name, fixed)
 	local window = Instance.new("Frame")
 	window.Name = name
@@ -195,12 +190,10 @@ function library:CreateWindow(name, fixed)
 
 	return { Window = window, Content = content, Fixed = fixed }
 end
--- 另行建立一個別名 TagWindow（與 CreateWindow 功能完全相同）
 library.TagWindow = library.CreateWindow
 
 ------------------------------------------------
--- 創建一個項目 (Item)
--- ※ 預設只建立一個按鈕，當按下時會切換狀態並觸發 callback(state)
+-- CreateItem: 建立一個按鈕項目（預設不附帶內建選項）
 function library:CreateItem(parent, name, callback)
 	local item = Instance.new("Frame")
 	item.Name = name
@@ -218,7 +211,7 @@ function library:CreateItem(parent, name, callback)
 	button.Name = "Button"
 	button.Parent = item
 	button.BackgroundTransparency = 1
-	-- 留出右側 30 像素的空間，供日後加入其他控制項（例如展開選項的按鈕）
+	-- 預留右側 30 像素作為選項展開按鈕的位置
 	button.Size = UDim2.new(1, -30, 0, 32)
 	button.Position = UDim2.new(0, 0, 0, 0)
 	button.Font = Enum.Font.Gotham
@@ -242,58 +235,53 @@ function library:CreateItem(parent, name, callback)
 			CreateTween(item, {BackgroundColor3 = self.theme.background, BackgroundTransparency = 0.9}, 0.2):Play()
 			CreateTween(button, {TextColor3 = self.theme.foreground}, 0.2):Play()
 		end
-		if callback then
-			callback(toggled)
-		end
+		if callback then callback(toggled) end
 	end)
 
 	return item
 end
 
 ------------------------------------------------
--- 為指定的 item 附加選項容器（供加入滑桿、勾選、下拉選單等）
--- ※ 注意：若傳入的物件為 window（含 TitleBar），則不允許附加選項
+-- AttachSettings: 為 item 附加選項容器及齒輪按鈕（僅適用於 item，不可用於 window）
 function library:AttachSettings(item)
-	-- 若 item 為 window（檢查有無 TitleBar）則不處理
 	if item:FindFirstChild("TitleBar") then
 		warn("AttachSettings: 不能在 window 上添加選項，請僅用於 item")
 		return nil
 	end
-	
 	if not item:FindFirstChild("SettingsContainer") then
 		local container = Instance.new("Frame")
 		container.Name = "SettingsContainer"
 		container.Parent = item
 		container.BackgroundTransparency = 1
-		container.Size = UDim2.new(1, 0, 0, 0)  -- 初始隱藏
+		container.Size = UDim2.new(1, 0, 0, 0) -- 初始隱藏
 		container.ClipsDescendants = true
 
 		local layout = Instance.new("UIListLayout")
 		layout.Parent = container
 		layout.SortOrder = Enum.SortOrder.LayoutOrder
 
-		-- 使用齒輪圖示作為展開/收起按鈕
-		local toggleSettings = Instance.new("TextButton")
-		toggleSettings.Name = "ToggleSettings"
-		toggleSettings.Parent = item
-		toggleSettings.BackgroundTransparency = 1
-		toggleSettings.Size = UDim2.new(0, 20, 0, 20)
-		toggleSettings.Position = UDim2.new(1, -30, 0, 6)
-		toggleSettings.Text = "⚙"
-		toggleSettings.TextColor3 = self.theme.foreground
-		toggleSettings.Font = Enum.Font.GothamBold
-		toggleSettings.TextSize = 16
-		toggleSettings.AutoButtonColor = false
+		-- 建立齒輪按鈕
+		local gear = Instance.new("TextButton")
+		gear.Name = "ToggleSettings"
+		gear.Parent = item
+		gear.BackgroundTransparency = 1
+		gear.Size = UDim2.new(0, 20, 0, 20)
+		gear.Position = UDim2.new(1, -30, 0, 6)
+		gear.Text = "⚙"
+		gear.TextColor3 = self.theme.foreground
+		gear.Font = Enum.Font.GothamBold
+		gear.TextSize = 16
+		gear.AutoButtonColor = false
 
 		local expanded = false
-		toggleSettings.MouseButton1Click:Connect(function()
+		gear.MouseButton1Click:Connect(function()
 			expanded = not expanded
 			if expanded then
-				-- 旋轉齒輪提供展開效果
-				toggleSettings.Rotation = 45
+				-- 旋轉齒輪並展開選項
+				CreateTween(gear, {Rotation = 45}, 0.2):Play()
 				container.Size = UDim2.new(1, 0, 0, layout.AbsoluteContentSize.Y)
 			else
-				toggleSettings.Rotation = 0
+				CreateTween(gear, {Rotation = 0}, 0.2):Play()
 				container.Size = UDim2.new(1, 0, 0, 0)
 			end
 		end)
@@ -302,7 +290,7 @@ function library:AttachSettings(item)
 end
 
 ------------------------------------------------
--- 創建滑桿 (Slider)；可註冊 callback(newValue)
+-- CreateSlider: 建立滑桿，並傳入 callback(newValue)
 function library:CreateSlider(parent, name, min, max, default, callback)
 	local slider = Instance.new("Frame")
 	slider.Name = name
@@ -379,7 +367,7 @@ function library:CreateSlider(parent, name, min, max, default, callback)
 end
 
 ------------------------------------------------
--- 創建範圍滑桿 (RangeSlider)；可註冊 callback(minValue, maxValue)
+-- CreateRangeSlider: 建立範圍滑桿，傳入 callback(minValue, maxValue)
 function library:CreateRangeSlider(parent, name, min, max, defaultMin, defaultMax, callback)
 	local slider = Instance.new("Frame")
 	slider.Name = name
@@ -485,7 +473,7 @@ function library:CreateRangeSlider(parent, name, min, max, defaultMin, defaultMa
 end
 
 ------------------------------------------------
--- 創建勾選開關 (Toggle)；可註冊 callback(state)
+-- CreateToggle: 建立勾選開關，並傳入 callback(state)
 function library:CreateToggle(parent, name, callback)
 	local toggle = Instance.new("Frame")
 	toggle.Name = name
@@ -543,7 +531,7 @@ function library:CreateToggle(parent, name, callback)
 end
 
 ------------------------------------------------
--- 創建下拉選單 (Dropdown)；可註冊 callback(option)
+-- CreateDropdown: 建立下拉選單，並傳入 callback(option)
 function library:CreateDropdown(parent, name, options, callback)
 	local container = Instance.new("Frame")
 	container.Name = name .. "Container"
@@ -646,7 +634,5 @@ ScreenGui:GetPropertyChangedSignal("AbsoluteSize"):Connect(function()
 end)
 
 ------------------------------------------------
--- 將 library 設定為全域變數，方便其他腳本存取
 _G.UILibrary = library
-
 return library
