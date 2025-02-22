@@ -196,9 +196,8 @@ end
 -- 另行建立一個別名 TagWindow（與 CreateWindow 功能完全相同）
 library.TagWindow = library.CreateWindow
 
-
 ------------------------------------------------
--- CreateItem
+-- CreateItem Button
 function library:CreateItem(parent, name, options)
     options = options or {}
 
@@ -238,6 +237,7 @@ function library:CreateItem(parent, name, options)
     local disabledBackgroundColor = self.theme.background
     local disabledTextColor = self.theme.foreground
     local disabledBackgroundTransparency = 0.9
+    local defaultGearColor = self.theme.foreground
 
     -- 設定按鈕 (齒輪)
     local settings = Instance.new("ImageButton")
@@ -252,7 +252,7 @@ function library:CreateItem(parent, name, options)
     settings.ImageRectSize = Vector2.new(36, 36)
     settings.ImageColor3 = self.theme.foreground
     settings.ImageTransparency = 0.5
-    local defaultGearColor = self.theme.foreground
+
 
     button.MouseButton1Click:Connect(function()
         toggled = not toggled
@@ -264,9 +264,6 @@ function library:CreateItem(parent, name, options)
             CreateTween(item, {BackgroundColor3 = disabledBackgroundColor, BackgroundTransparency = disabledBackgroundTransparency}, 0.2):Play()
             CreateTween(button, {TextColor3 = disabledTextColor}, 0.2):Play()
             CreateTween(settings, {ImageColor3 = defaultGearColor}, 0.2):Play()
-        end
-        if options.callback then
-            options.callback(toggled)
         end
     end)
 
@@ -328,10 +325,10 @@ function library:CreateItem(parent, name, options)
         itemPaddingBottom.PaddingBottom = UDim.new(0, 8)
 
         -- 加入範例控制項
-        library:CreateSlider(settingsPanel, "Slider", 0, 100, 50)
-        library:CreateRangeSlider(settingsPanel, "Range Slider", 0, 100, 25, 75)
-        library:CreateToggle(settingsPanel, "Toggle")
-        library:CreateDropdown(settingsPanel, "Dropdown", {"Option 1", "Option 2", "Option 3"})
+        self:CreateSlider(settingsPanel, "Slider", 0, 100, 50)
+        self:CreateRangeSlider(settingsPanel, "Range Slider", 0, 100, 25, 75)
+        self:CreateToggle(settingsPanel, "Toggle")
+        self:CreateDropdown(settingsPanel, "Dropdown", {"Option 1", "Option 2", "Option 3"})
 
         local function updateExpandedSize()
             local expandedPanelHeight = panelList.AbsoluteContentSize.Y + panelPadding.PaddingTop.Offset + panelPadding.PaddingBottom.Offset
@@ -353,7 +350,7 @@ function library:CreateItem(parent, name, options)
                 settingsArea.Visible = true
                 local expandedPanelHeight, newItemHeight = updateExpandedSize()
                 CreateTween(settingsArea, {Size = UDim2.new(1, 0, 0, expandedPanelHeight)}, 0.3):Play()
-                CreateTween(item, {Size = UDim2.new(1, 0, 0, newItemHeight)}, 0.3):Play() -- Item 高度跟著設定展開
+                CreateTween(item, {Size = UDim2.new(1, 0, 0, 32 + expandedPanelHeight + 12)}, 0.3):Play() -- 調整 item 高度以容納 settingsArea
             end
         end)
 
@@ -361,14 +358,13 @@ function library:CreateItem(parent, name, options)
             if settingsExpanded then
                 local expandedPanelHeight, newItemHeight = updateExpandedSize()
                 CreateTween(settingsArea, {Size = UDim2.new(1, 0, 0, expandedPanelHeight)}, 0.3):Play()
-                CreateTween(item, {Size = UDim2.new(1, 0, 0, newItemHeight)}, 0.3):Play() -- Item 高度跟著設定展開
+                CreateTween(item, {Size = UDim2.new(1, 0, 0, 32 + expandedPanelHeight + 12)}, 0.3):Play() -- 調整 item 高度以容納 settingsArea
             end
         end)
     end
 
     return item
 end
-
 
 ------------------------------------------------
 -- CreateSlider
@@ -537,7 +533,7 @@ function library:CreateRangeSlider(parent, name, min, max, defaultMin, defaultMa
     end)
 
     UserInputService.InputChanged:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
+        if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
             local mousePos = UserInputService:GetMouseLocation()
             local relativePos = mousePos - sliderBar.AbsolutePosition
             local percentage = math.clamp(relativePos.X / sliderBar.AbsoluteSize.X, 0, 1)
@@ -701,9 +697,9 @@ function library:CreateDropdown(parent, name, options)
 end
 
 ------------------------------------------------
--- 當螢幕尺寸改變時，重新調整非固定視窗的位置
+-- 監聽螢幕大小變化，重新調整非固定視窗位置
 ScreenGui:GetPropertyChangedSignal("AbsoluteSize"):Connect(function()
-    WindowManager.windowOffset = 0
+    WindowManager.windowOffset = 0 -- 重置偏移量
     for window, _ in pairs(WindowManager.windows) do
         if not window:IsDescendantOf(ScreenGui) then
             WindowManager.windows[window] = nil
@@ -714,8 +710,10 @@ ScreenGui:GetPropertyChangedSignal("AbsoluteSize"):Connect(function()
             local screenWidth, screenHeight = ScreenGui.AbsoluteSize.X, ScreenGui.AbsoluteSize.Y
             local windowX = (screenWidth - defaultWidth) / 2 + offset
             local windowY = (screenHeight - defaultHeight) / 2 + offset
+
             windowX = math.clamp(windowX, WINDOW_PADDING, screenWidth - defaultWidth - WINDOW_PADDING)
             windowY = math.clamp(windowY, WINDOW_PADDING, screenHeight - defaultHeight - WINDOW_PADDING)
+
             window.Position = UDim2.new(0, windowX, 0, windowY)
             WindowManager.windowOffset = offset + 20
         end
@@ -729,10 +727,9 @@ library.mainWindow.Window.Position = UDim2.new(0, 10, 0, 10)
 
 -- 將一個視窗的開關項加入 mainWindow 內，點選後可切換對應視窗的顯示與隱藏
 function library:AddWindowToggle(windowInstance)
-    local item = library:CreateItem(library.mainWindow.Content, windowInstance.Window.Name, {callback = function(state)
-        windowInstance.Window.Visible = state
-    end})
+    local item = library:CreateItem(library.mainWindow.Content, windowInstance.Window.Name)
     return item
 end
+
 
 return library
