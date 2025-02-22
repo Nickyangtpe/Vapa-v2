@@ -196,6 +196,7 @@ end
 -- 另行建立一個別名 TagWindow（與 CreateWindow 功能完全相同）
 library.TagWindow = library.CreateWindow
 
+
 ------------------------------------------------
 -- CreateItem
 function library:CreateItem(parent, name, options)
@@ -237,8 +238,6 @@ function library:CreateItem(parent, name, options)
     local disabledBackgroundColor = self.theme.background
     local disabledTextColor = self.theme.foreground
     local disabledBackgroundTransparency = 0.9
-    local defaultGearColor = self.theme.foreground
-
 
     -- 設定按鈕 (齒輪)
     local settings = Instance.new("ImageButton")
@@ -251,20 +250,23 @@ function library:CreateItem(parent, name, options)
     settings.Image = "rbxassetid://3926307971"
     settings.ImageRectOffset = Vector2.new(324, 124)
     settings.ImageRectSize = Vector2.new(36, 36)
-    settings.ImageColor3 = defaultGearColor -- 初始齒輪顏色
+    settings.ImageColor3 = self.theme.foreground
     settings.ImageTransparency = 0.5
-
+    local defaultGearColor = self.theme.foreground
 
     button.MouseButton1Click:Connect(function()
         toggled = not toggled
         if toggled then
             CreateTween(item, {BackgroundColor3 = enabledBackgroundColor, BackgroundTransparency = 0}, 0.2):Play()
             CreateTween(button, {TextColor3 = enabledTextColor}, 0.2):Play()
-            CreateTween(settings, {ImageColor3 = enabledTextColor}, 0.2):Play() -- 選中時齒輪顏色
+            CreateTween(settings, {ImageColor3 = enabledTextColor}, 0.2):Play()
         else
             CreateTween(item, {BackgroundColor3 = disabledBackgroundColor, BackgroundTransparency = disabledBackgroundTransparency}, 0.2):Play()
             CreateTween(button, {TextColor3 = disabledTextColor}, 0.2):Play()
-            CreateTween(settings, {ImageColor3 = defaultGearColor}, 0.2):Play() -- 未選中時齒輪顏色
+            CreateTween(settings, {ImageColor3 = defaultGearColor}, 0.2):Play()
+        end
+        if options.callback then
+            options.callback(toggled)
         end
     end)
 
@@ -280,94 +282,89 @@ function library:CreateItem(parent, name, options)
         end
     end)
 
-
-    local settingsExpanded = false
-
-    local settingsArea = Instance.new("Frame")
-    settingsArea.Name = "SettingsArea"
-    settingsArea.Parent = parent
-    settingsArea.BackgroundColor3 = self.theme.windowBackground
-    settingsArea.BackgroundTransparency = 0.9
-    settingsArea.BorderSizePixel = 1
-    settingsArea.BorderColor3 = self.theme.background
-    settingsArea.Position = UDim2.new(0, 0, 0, 44)
-    settingsArea.Size = UDim2.new(1, 0, 0, 0)
-    settingsArea.Visible = false
-    settingsArea.ClipsDescendants = true
-    settingsArea.ZIndex = 9
-
-    local areaCorner = Instance.new("UICorner")
-    areaCorner.CornerRadius = UDim.new(0, 4)
-    areaCorner.Parent = settingsArea
-
-    local settingsPanel = Instance.new("Frame")
-    settingsPanel.Name = "SettingsPanel"
-    settingsPanel.Parent = settingsArea
-    settingsPanel.BackgroundTransparency = 1
-    settingsPanel.BorderSizePixel = 0
-    settingsPanel.Size = UDim2.new(1, 0, 1, 0)
-    settingsPanel.Position = UDim2.new(0, 0, 0, 0)
-
-    local panelList = Instance.new("UIListLayout")
-    panelList.Parent = settingsPanel
-    panelList.SortOrder = Enum.SortOrder.LayoutOrder
-    panelList.Padding = UDim.new(0, 4)
-
-    local panelPadding = Instance.new("UIPadding")
-    panelPadding.Parent = settingsPanel
-    panelPadding.PaddingLeft = UDim.new(0, 8)
-    panelPadding.PaddingRight = UDim.new(0, 8)
-    panelPadding.PaddingTop = UDim.new(0, 8)
-    panelPadding.PaddingBottom = UDim.new(0, 8)
-
-    local itemPaddingBottom = Instance.new("UIPadding")
-    itemPaddingBottom.Name = "ItemPaddingBottom"
-    itemPaddingBottom.Parent = item
-    itemPaddingBottom.PaddingBottom = UDim.new(0, 8)
-
-
-    local function updateExpandedSize()
-        local expandedPanelHeight = panelList.AbsoluteContentSize.Y + panelPadding.PaddingTop.Offset + panelPadding.PaddingBottom.Offset
-        local newItemHeight = 32 + 12 + expandedPanelHeight
-        return expandedPanelHeight, newItemHeight
-    end
-
-
-    settings.MouseButton1Click:Connect(function()
-        if settingsExpanded then
-            settingsExpanded = false
-            local tween = CreateTween(settingsArea, {Size = UDim2.new(1, 0, 0, 0)}, 0.3)
-            tween:Play()
-            tween.Completed:Connect(function()
-                settingsArea.Visible = false
-            end)
-            CreateTween(item, {Size = UDim2.new(1, 0, 0, 32)}, 0.3):Play()
-        else
-            settingsExpanded = true
-            settingsArea.Visible = true
-            local expandedPanelHeight, newItemHeight = updateExpandedSize()
-            CreateTween(settingsArea, {Size = UDim2.new(1, 0, 0, expandedPanelHeight)}, 0.3):Play()
-            CreateTween(item, {Size = UDim2.new(1, 0, 0, 32 + 12 + expandedPanelHeight)}, 0.3):Play() -- item 高度跟著 settingsArea 展開
-        end
-    end)
-
-    panelList:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
-        if settingsExpanded then
-            local expandedPanelHeight, newItemHeight = updateExpandedSize()
-            CreateTween(settingsArea, {Size = UDim2.new(1, 0, 0, expandedPanelHeight)}, 0.3):Play()
-            CreateTween(item, {Size = UDim2.new(1, 0, 0, 32 + 12 + expandedPanelHeight)}, 0.3):Play() -- item 高度跟著 settingsArea 展開
-        end
-    end)
-
-
     if not options.noSettings then
-        -- 加入範例控制項 (只有在 settings 功能啟用的時候才加入)
-        self:CreateSlider(settingsPanel, "Slider", 0, 100, 50)
-        self:CreateRangeSlider(settingsPanel, "Range Slider", 0, 100, 25, 75)
-        self:CreateToggle(settingsPanel, "Toggle")
-        self:CreateDropdown(settingsPanel, "Dropdown", {"Option 1", "Option 2", "Option 3"})
-    end
+        local settingsExpanded = false
 
+        local settingsArea = Instance.new("Frame")
+        settingsArea.Name = "SettingsArea"
+        settingsArea.Parent = parent
+        settingsArea.BackgroundColor3 = self.theme.windowBackground
+        settingsArea.BackgroundTransparency = 0.9
+        settingsArea.BorderSizePixel = 1
+        settingsArea.BorderColor3 = self.theme.background
+        settingsArea.Position = UDim2.new(0, 0, 0, 44)
+        settingsArea.Size = UDim2.new(1, 0, 0, 0)
+        settingsArea.Visible = false
+        settingsArea.ClipsDescendants = true
+        settingsArea.ZIndex = 9
+
+        local areaCorner = Instance.new("UICorner")
+        areaCorner.CornerRadius = UDim.new(0, 4)
+        areaCorner.Parent = settingsArea
+
+        local settingsPanel = Instance.new("Frame")
+        settingsPanel.Name = "SettingsPanel"
+        settingsPanel.Parent = settingsArea
+        settingsPanel.BackgroundTransparency = 1
+        settingsPanel.BorderSizePixel = 0
+        settingsPanel.Size = UDim2.new(1, 0, 1, 0)
+        settingsPanel.Position = UDim2.new(0, 0, 0, 0)
+
+        local panelList = Instance.new("UIListLayout")
+        panelList.Parent = settingsPanel
+        panelList.SortOrder = Enum.SortOrder.LayoutOrder
+        panelList.Padding = UDim.new(0, 4)
+
+        local panelPadding = Instance.new("UIPadding")
+        panelPadding.Parent = settingsPanel
+        panelPadding.PaddingLeft = UDim.new(0, 8)
+        panelPadding.PaddingRight = UDim.new(0, 8)
+        panelPadding.PaddingTop = UDim.new(0, 8)
+        panelPadding.PaddingBottom = UDim.new(0, 8)
+
+        local itemPaddingBottom = Instance.new("UIPadding")
+        itemPaddingBottom.Name = "ItemPaddingBottom"
+        itemPaddingBottom.Parent = item
+        itemPaddingBottom.PaddingBottom = UDim.new(0, 8)
+
+        -- 加入範例控制項
+        library:CreateSlider(settingsPanel, "Slider", 0, 100, 50)
+        library:CreateRangeSlider(settingsPanel, "Range Slider", 0, 100, 25, 75)
+        library:CreateToggle(settingsPanel, "Toggle")
+        library:CreateDropdown(settingsPanel, "Dropdown", {"Option 1", "Option 2", "Option 3"})
+
+        local function updateExpandedSize()
+            local expandedPanelHeight = panelList.AbsoluteContentSize.Y + panelPadding.PaddingTop.Offset + panelPadding.PaddingBottom.Offset
+            local newItemHeight = 32 + 12 + expandedPanelHeight
+            return expandedPanelHeight, newItemHeight
+        end
+
+        settings.MouseButton1Click:Connect(function()
+            if settingsExpanded then
+                settingsExpanded = false
+                local tween = CreateTween(settingsArea, {Size = UDim2.new(1, 0, 0, 0)}, 0.3)
+                tween:Play()
+                tween.Completed:Connect(function()
+                    settingsArea.Visible = false
+                end)
+                CreateTween(item, {Size = UDim2.new(1, 0, 0, 32)}, 0.3):Play()
+            else
+                settingsExpanded = true
+                settingsArea.Visible = true
+                local expandedPanelHeight, newItemHeight = updateExpandedSize()
+                CreateTween(settingsArea, {Size = UDim2.new(1, 0, 0, expandedPanelHeight)}, 0.3):Play()
+                CreateTween(item, {Size = UDim2.new(1, 0, 0, newItemHeight)}, 0.3):Play() -- Item 高度跟著設定展開
+            end
+        end)
+
+        panelList:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
+            if settingsExpanded then
+                local expandedPanelHeight, newItemHeight = updateExpandedSize()
+                CreateTween(settingsArea, {Size = UDim2.new(1, 0, 0, expandedPanelHeight)}, 0.3):Play()
+                CreateTween(item, {Size = UDim2.new(1, 0, 0, newItemHeight)}, 0.3):Play() -- Item 高度跟著設定展開
+            end
+        end)
+    end
 
     return item
 end
@@ -540,7 +537,7 @@ function library:CreateRangeSlider(parent, name, min, max, defaultMin, defaultMa
     end)
 
     UserInputService.InputChanged:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+        if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
             local mousePos = UserInputService:GetMouseLocation()
             local relativePos = mousePos - sliderBar.AbsolutePosition
             local percentage = math.clamp(relativePos.X / sliderBar.AbsoluteSize.X, 0, 1)
@@ -704,9 +701,9 @@ function library:CreateDropdown(parent, name, options)
 end
 
 ------------------------------------------------
--- 監聽螢幕大小變化，重新調整非固定視窗位置
+-- 當螢幕尺寸改變時，重新調整非固定視窗的位置
 ScreenGui:GetPropertyChangedSignal("AbsoluteSize"):Connect(function()
-    WindowManager.windowOffset = 0 -- 重置偏移量
+    WindowManager.windowOffset = 0
     for window, _ in pairs(WindowManager.windows) do
         if not window:IsDescendantOf(ScreenGui) then
             WindowManager.windows[window] = nil
@@ -717,14 +714,25 @@ ScreenGui:GetPropertyChangedSignal("AbsoluteSize"):Connect(function()
             local screenWidth, screenHeight = ScreenGui.AbsoluteSize.X, ScreenGui.AbsoluteSize.Y
             local windowX = (screenWidth - defaultWidth) / 2 + offset
             local windowY = (screenHeight - defaultHeight) / 2 + offset
-
             windowX = math.clamp(windowX, WINDOW_PADDING, screenWidth - defaultWidth - WINDOW_PADDING)
             windowY = math.clamp(windowY, WINDOW_PADDING, screenHeight - defaultHeight - WINDOW_PADDING)
-
             window.Position = UDim2.new(0, windowX, 0, windowY)
             WindowManager.windowOffset = offset + 20
         end
     end
 end)
+
+------------------------------------------------
+-- 建立預設 mainWindow – 用於顯示所有視窗的 toggle 項
+library.mainWindow = library:CreateWindow("Main", true)
+library.mainWindow.Window.Position = UDim2.new(0, 10, 0, 10)
+
+-- 將一個視窗的開關項加入 mainWindow 內，點選後可切換對應視窗的顯示與隱藏
+function library:AddWindowToggle(windowInstance)
+    local item = library:CreateItem(library.mainWindow.Content, windowInstance.Window.Name, {callback = function(state)
+        windowInstance.Window.Visible = state
+    end})
+    return item
+end
 
 return library
