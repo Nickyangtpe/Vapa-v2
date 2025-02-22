@@ -197,7 +197,7 @@ end
 library.TagWindow = library.CreateWindow
 
 ------------------------------------------------
--- CreateItem Button
+-- CreateItem – 此函式只建立一個按鈕項目，不會自動產生預設選項
 function library:CreateItem(parent, name, options)
     options = options or {}
 
@@ -237,9 +237,8 @@ function library:CreateItem(parent, name, options)
     local disabledBackgroundColor = self.theme.background
     local disabledTextColor = self.theme.foreground
     local disabledBackgroundTransparency = 0.9
-    local defaultGearColor = self.theme.foreground
 
-    -- 設定按鈕 (齒輪)
+    -- Settings button (gear icon)
     local settings = Instance.new("ImageButton")
     settings.Name = "Settings"
     settings.Parent = item
@@ -252,7 +251,7 @@ function library:CreateItem(parent, name, options)
     settings.ImageRectSize = Vector2.new(36, 36)
     settings.ImageColor3 = self.theme.foreground
     settings.ImageTransparency = 0.5
-
+    local defaultGearColor = self.theme.foreground
 
     button.MouseButton1Click:Connect(function()
         toggled = not toggled
@@ -324,7 +323,7 @@ function library:CreateItem(parent, name, options)
         itemPaddingBottom.Parent = item
         itemPaddingBottom.PaddingBottom = UDim.new(0, 8)
 
-        -- 加入範例控制項
+        -- Add example controls
         self:CreateSlider(settingsPanel, "Slider", 0, 100, 50)
         self:CreateRangeSlider(settingsPanel, "Range Slider", 0, 100, 25, 75)
         self:CreateToggle(settingsPanel, "Toggle")
@@ -350,7 +349,7 @@ function library:CreateItem(parent, name, options)
                 settingsArea.Visible = true
                 local expandedPanelHeight, newItemHeight = updateExpandedSize()
                 CreateTween(settingsArea, {Size = UDim2.new(1, 0, 0, expandedPanelHeight)}, 0.3):Play()
-                CreateTween(item, {Size = UDim2.new(1, 0, 0, 32 + expandedPanelHeight + 12)}, 0.3):Play() -- 調整 item 高度以容納 settingsArea
+                CreateTween(item, {Size = UDim2.new(1, 0, 0, 32)}, 0.3):Play()
             end
         end)
 
@@ -358,7 +357,7 @@ function library:CreateItem(parent, name, options)
             if settingsExpanded then
                 local expandedPanelHeight, newItemHeight = updateExpandedSize()
                 CreateTween(settingsArea, {Size = UDim2.new(1, 0, 0, expandedPanelHeight)}, 0.3):Play()
-                CreateTween(item, {Size = UDim2.new(1, 0, 0, 32 + expandedPanelHeight + 12)}, 0.3):Play() -- 調整 item 高度以容納 settingsArea
+                CreateTween(item, {Size = UDim2.new(1, 0, 0, 32)}, 0.3):Play()
             end
         end)
     end
@@ -367,8 +366,50 @@ function library:CreateItem(parent, name, options)
 end
 
 ------------------------------------------------
--- CreateSlider
-function library:CreateSlider(parent, name, min, max, default)
+-- 可呼叫此函式為 item 附加一個「選項容器」，供你自行添加各類控制項
+-- ※ 按下 item 上的齒輪後才展開/收起選項，初始為隱藏狀態
+function library:AttachSettings(item)
+    if not item:FindFirstChild("SettingsContainer") then
+        local container = Instance.new("Frame")
+        container.Name = "SettingsContainer"
+        container.Parent = item
+        container.BackgroundTransparency = 1
+        container.Size = UDim2.new(1, 0, 0, 0)  -- 初始隱藏
+        container.ClipsDescendants = true
+
+        local layout = Instance.new("UIListLayout", container)
+        layout.SortOrder = Enum.SortOrder.LayoutOrder
+
+        local toggleSettings = Instance.new("TextButton")
+        toggleSettings.Name = "ToggleSettings"
+        toggleSettings.Parent = item
+        toggleSettings.BackgroundTransparency = 1
+        toggleSettings.Size = UDim2.new(0, 20, 0, 20)
+        toggleSettings.Position = UDim2.new(1, -30, 0, 6)
+        toggleSettings.Text = "⚙"
+        toggleSettings.TextColor3 = self.theme.foreground
+        toggleSettings.Font = Enum.Font.GothamBold
+        toggleSettings.TextSize = 16
+        toggleSettings.AutoButtonColor = false
+
+        local expanded = false
+        toggleSettings.MouseButton1Click:Connect(function()
+            expanded = not expanded
+            if expanded then
+                toggleSettings.Rotation = 45
+                container.Size = UDim2.new(1, 0, 0, layout.AbsoluteContentSize.Y)
+            else
+                toggleSettings.Rotation = 0
+                container.Size = UDim2.new(1, 0, 0, 0)
+            end
+        end)
+    end
+    return item.SettingsContainer
+end
+
+------------------------------------------------
+-- CreateSlider – 現在可傳入 callback(value)
+function library:CreateSlider(parent, name, min, max, default, callback)
     local slider = Instance.new("Frame")
     slider.Name = name
     slider.Parent = parent
@@ -420,35 +461,32 @@ function library:CreateSlider(parent, name, min, max, default)
     value.TextXAlignment = Enum.TextXAlignment.Right
 
     local dragging = false
-
     sliderButton.InputBegan:Connect(function(input)
         if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
             dragging = true
         end
     end)
-
     sliderButton.InputEnded:Connect(function(input)
         if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
             dragging = false
         end
     end)
-
     UserInputService.InputChanged:Connect(function(input)
         if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
             local mousePos = UserInputService:GetMouseLocation()
             local relativePos = mousePos - sliderBar.AbsolutePosition
             local percentage = math.clamp(relativePos.X / sliderBar.AbsoluteSize.X, 0, 1)
             local newValue = math.floor(min + (max - min) * percentage)
-
             sliderButton.Position = UDim2.new(percentage, -0.5, 0.5, 0)
             value.Text = tostring(newValue)
+            if callback then callback(newValue) end
         end
     end)
 end
 
 ------------------------------------------------
--- CreateRangeSlider
-function library:CreateRangeSlider(parent, name, min, max, defaultMin, defaultMax)
+-- CreateRangeSlider – 可傳入 callback(minValue, maxValue)
+function library:CreateRangeSlider(parent, name, min, max, defaultMin, defaultMax, callback)
     local slider = Instance.new("Frame")
     slider.Name = name
     slider.Parent = parent
@@ -518,49 +556,43 @@ function library:CreateRangeSlider(parent, name, min, max, defaultMin, defaultMa
             draggingMin = true
         end
     end)
-
     maxSliderButton.InputBegan:Connect(function(input)
         if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
             draggingMax = true
         end
     end)
-
     UserInputService.InputEnded:Connect(function(input)
         if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
             draggingMin = false
             draggingMax = false
         end
     end)
-
     UserInputService.InputChanged:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+        if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
             local mousePos = UserInputService:GetMouseLocation()
             local relativePos = mousePos - sliderBar.AbsolutePosition
             local percentage = math.clamp(relativePos.X / sliderBar.AbsoluteSize.X, 0, 1)
             local newValue = math.floor(min + (max - min) * percentage)
-
             if draggingMin then
                 local currentMax = tonumber(string.split(rangeValueLabel.Text, "-")[2])
-                if newValue > currentMax then
-                    newValue = currentMax
-                end
+                if newValue > currentMax then newValue = currentMax end
                 minSliderButton.Position = UDim2.new(percentage, -0.5, 0.5, 0)
                 rangeValueLabel.Text = tostring(newValue) .. "-" .. tostring(currentMax)
+                if callback then callback(newValue, currentMax) end
             elseif draggingMax then
                 local currentMin = tonumber(string.split(rangeValueLabel.Text, "-")[1])
-                if newValue < currentMin then
-                    newValue = currentMin
-                end
+                if newValue < currentMin then newValue = currentMin end
                 maxSliderButton.Position = UDim2.new(percentage, -0.5, 0.5, 0)
                 rangeValueLabel.Text = tostring(currentMin) .. "-" .. tostring(newValue)
+                if callback then callback(currentMin, newValue) end
             end
         end
     end)
 end
 
 ------------------------------------------------
--- CreateToggle
-function library:CreateToggle(parent, name)
+-- CreateToggle – 可傳入 callback(state)
+function library:CreateToggle(parent, name, callback)
     local toggle = Instance.new("Frame")
     toggle.Name = name
     toggle.Parent = parent
@@ -605,7 +637,6 @@ function library:CreateToggle(parent, name)
     toggleInnerCorner.Parent = toggleInner
 
     local toggled = false
-
     toggleButton.MouseButton1Click:Connect(function()
         toggled = not toggled
         if toggled then
@@ -613,12 +644,13 @@ function library:CreateToggle(parent, name)
         else
             CreateTween(toggleInner, {Size = UDim2.new(0, 0, 0, 0)}, 0.2):Play()
         end
+        if callback then callback(toggled) end
     end)
 end
 
 ------------------------------------------------
--- CreateDropdown
-function library:CreateDropdown(parent, name, options)
+-- CreateDropdown – 可傳入 callback(option)
+function library:CreateDropdown(parent, name, options, callback)
     local container = Instance.new("Frame")
     container.Name = name .. "Container"
     container.Parent = parent
@@ -683,6 +715,7 @@ function library:CreateDropdown(parent, name, options)
             dropdownButton.Text = option
             dropdownList.Visible = false
             container.Size = UDim2.new(1, 0, 0, 25)
+            if callback then callback(option) end
         end)
     end
 
@@ -697,9 +730,9 @@ function library:CreateDropdown(parent, name, options)
 end
 
 ------------------------------------------------
--- 監聽螢幕大小變化，重新調整非固定視窗位置
+-- 當螢幕尺寸改變時，重新調整非固定視窗的位置
 ScreenGui:GetPropertyChangedSignal("AbsoluteSize"):Connect(function()
-    WindowManager.windowOffset = 0 -- 重置偏移量
+    WindowManager.windowOffset = 0
     for window, _ in pairs(WindowManager.windows) do
         if not window:IsDescendantOf(ScreenGui) then
             WindowManager.windows[window] = nil
@@ -710,10 +743,8 @@ ScreenGui:GetPropertyChangedSignal("AbsoluteSize"):Connect(function()
             local screenWidth, screenHeight = ScreenGui.AbsoluteSize.X, ScreenGui.AbsoluteSize.Y
             local windowX = (screenWidth - defaultWidth) / 2 + offset
             local windowY = (screenHeight - defaultHeight) / 2 + offset
-
             windowX = math.clamp(windowX, WINDOW_PADDING, screenWidth - defaultWidth - WINDOW_PADDING)
             windowY = math.clamp(windowY, WINDOW_PADDING, screenHeight - defaultHeight - WINDOW_PADDING)
-
             window.Position = UDim2.new(0, windowX, 0, windowY)
             WindowManager.windowOffset = offset + 20
         end
@@ -727,9 +758,10 @@ library.mainWindow.Window.Position = UDim2.new(0, 10, 0, 10)
 
 -- 將一個視窗的開關項加入 mainWindow 內，點選後可切換對應視窗的顯示與隱藏
 function library:AddWindowToggle(windowInstance)
-    local item = library:CreateItem(library.mainWindow.Content, windowInstance.Window.Name)
+    local item = library:CreateItem(library.mainWindow.Content, windowInstance.Window.Name, function(state)
+        windowInstance.Window.Visible = state
+    end)
     return item
 end
-
 
 return library
