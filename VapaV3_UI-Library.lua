@@ -238,7 +238,7 @@ function library:CreateItem(parent, name, options)
     local disabledTextColor = self.theme.foreground
     local disabledBackgroundTransparency = 0.9
 
-    -- Settings button (gear icon)
+    -- 設定按鈕 (齒輪)
     local settings = Instance.new("ImageButton")
     settings.Name = "Settings"
     settings.Parent = item
@@ -323,12 +323,6 @@ function library:CreateItem(parent, name, options)
         itemPaddingBottom.Parent = item
         itemPaddingBottom.PaddingBottom = UDim.new(0, 8)
 
-        -- Add example controls
-        self:CreateSlider(settingsPanel, "Slider", 0, 100, 50)
-        self:CreateRangeSlider(settingsPanel, "Range Slider", 0, 100, 25, 75)
-        self:CreateToggle(settingsPanel, "Toggle")
-        self:CreateDropdown(settingsPanel, "Dropdown", {"Option 1", "Option 2", "Option 3"})
-
         local function updateExpandedSize()
             local expandedPanelHeight = panelList.AbsoluteContentSize.Y + panelPadding.PaddingTop.Offset + panelPadding.PaddingBottom.Offset
             local newItemHeight = 32 + 12 + expandedPanelHeight
@@ -365,47 +359,6 @@ function library:CreateItem(parent, name, options)
     return item
 end
 
-------------------------------------------------
--- 可呼叫此函式為 item 附加一個「選項容器」，供你自行添加各類控制項
--- ※ 按下 item 上的齒輪後才展開/收起選項，初始為隱藏狀態
-function library:AttachSettings(item)
-    if not item:FindFirstChild("SettingsContainer") then
-        local container = Instance.new("Frame")
-        container.Name = "SettingsContainer"
-        container.Parent = item
-        container.BackgroundTransparency = 1
-        container.Size = UDim2.new(1, 0, 0, 0)  -- 初始隱藏
-        container.ClipsDescendants = true
-
-        local layout = Instance.new("UIListLayout", container)
-        layout.SortOrder = Enum.SortOrder.LayoutOrder
-
-        local toggleSettings = Instance.new("TextButton")
-        toggleSettings.Name = "ToggleSettings"
-        toggleSettings.Parent = item
-        toggleSettings.BackgroundTransparency = 1
-        toggleSettings.Size = UDim2.new(0, 20, 0, 20)
-        toggleSettings.Position = UDim2.new(1, -30, 0, 6)
-        toggleSettings.Text = "⚙"
-        toggleSettings.TextColor3 = self.theme.foreground
-        toggleSettings.Font = Enum.Font.GothamBold
-        toggleSettings.TextSize = 16
-        toggleSettings.AutoButtonColor = false
-
-        local expanded = false
-        toggleSettings.MouseButton1Click:Connect(function()
-            expanded = not expanded
-            if expanded then
-                toggleSettings.Rotation = 45
-                container.Size = UDim2.new(1, 0, 0, layout.AbsoluteContentSize.Y)
-            else
-                toggleSettings.Rotation = 0
-                container.Size = UDim2.new(1, 0, 0, 0)
-            end
-        end)
-    end
-    return item.SettingsContainer
-end
 
 ------------------------------------------------
 -- CreateSlider – 現在可傳入 callback(value)
