@@ -1,0 +1,3618 @@
+--[[
+ .____                  ________ ___.    _____                           __                
+ |    |    __ _______   \_____  \\_ |___/ ____\_ __  ______ ____ _____ _/  |_  ___________ 
+ |    |   |  |  \__  \   /   |   \| __ \   __\  |  \/  ___// ___\\__  \\   __\/  _ \_  __ \
+ |    |___|  |  // __ \_/    |    \ \_\ \  | |  |  /\___ \\  \___ / __ \|  | (  <_> )  | \/
+ |_______ \____/(____  /\_______  /___  /__| |____//____  >\___  >____  /__|  \____/|__|   
+         \/          \/         \/    \/                \/     \/     \/                   
+          \_Welcome to LuaObfuscator.com   (Alpha 0.10.8) ~  Much Love, Ferib 
+
+]]--
+
+local UserInputService = game:GetService("UserInputService");
+local TweenService = game:GetService("TweenService");
+local RunService = game:GetService("RunService");
+local Players = game:GetService("Players");
+local Lighting = game:GetService("Lighting");
+local MessageSystem = {};
+local MESSAGE_DURATION = 5;
+local MESSAGE_TYPES = {INFO={ICON="rbxassetid://9072944922",COLOR=Color3.fromRGB(255, 255, 255),BAR_COLOR=Color3.fromRGB(255, 255, 255)},WARNING={ICON="rbxassetid://9072944869",COLOR=Color3.fromRGB(255, 165, 0),BAR_COLOR=Color3.fromRGB(255, 120, 0)}};
+local player = Players.LocalPlayer;
+local activeMessages = {};
+local function setupGui()
+	local screenGui = Instance.new("ScreenGui");
+	screenGui.Name = "MessageSystem";
+	screenGui.ResetOnSpawn = false;
+	local messageContainer = Instance.new("Frame");
+	messageContainer.Name = "MessageContainer";
+	messageContainer.BackgroundTransparency = 1;
+	messageContainer.Position = UDim2.new(1, -20, 1, -20);
+	messageContainer.Size = UDim2.new(0, 300, 1, -40);
+	messageContainer.AnchorPoint = Vector2.new(1, 1);
+	messageContainer.Parent = screenGui;
+	return screenGui, messageContainer;
+end
+local function createMessageFrame(title, message, messageType)
+	local msgType = MESSAGE_TYPES[messageType] or MESSAGE_TYPES.INFO;
+	local frame = Instance.new("Frame");
+	frame.Name = "Message";
+	frame.Size = UDim2.new(1, 0, 0, 0);
+	frame.BackgroundColor3 = Color3.fromRGB(20, 20, 20);
+	frame.BackgroundTransparency = 0.2;
+	frame.BorderSizePixel = 0;
+	frame.Position = UDim2.new(0, 0, 0, 0);
+	local uiCorner = Instance.new("UICorner");
+	uiCorner.CornerRadius = UDim.new(0, 6);
+	uiCorner.Parent = frame;
+	local overlay = Instance.new("Frame");
+	overlay.Name = "Overlay";
+	overlay.Size = UDim2.new(1, 0, 1, 0);
+	overlay.BackgroundColor3 = Color3.fromRGB(0, 0, 0);
+	overlay.BackgroundTransparency = 0.5;
+	overlay.BorderSizePixel = 0;
+	overlay.ZIndex = 2;
+	overlay.Parent = frame;
+	local overlayCorner = Instance.new("UICorner");
+	overlayCorner.CornerRadius = UDim.new(0, 6);
+	overlayCorner.Parent = overlay;
+	local icon = Instance.new("ImageLabel");
+	icon.Name = "Icon";
+	icon.Size = UDim2.new(0, 24, 0, 24);
+	icon.Position = UDim2.new(0, 12, 0, 12);
+	icon.BackgroundTransparency = 1;
+	icon.Image = msgType.ICON;
+	icon.ImageColor3 = msgType.COLOR;
+	icon.ZIndex = 3;
+	icon.Parent = frame;
+	local titleLabel = Instance.new("TextLabel");
+	titleLabel.Name = "Title";
+	titleLabel.Size = UDim2.new(1, -60, 0, 24);
+	titleLabel.Position = UDim2.new(0, 48, 0, 12);
+	titleLabel.BackgroundTransparency = 1;
+	titleLabel.Font = Enum.Font.GothamBold;
+	titleLabel.TextSize = 16;
+	titleLabel.TextColor3 = Color3.fromRGB(255, 255, 255);
+	titleLabel.TextXAlignment = Enum.TextXAlignment.Left;
+	titleLabel.Text = title;
+	titleLabel.ZIndex = 3;
+	titleLabel.Parent = frame;
+	local messageLabel = Instance.new("TextLabel");
+	messageLabel.Name = "Message";
+	messageLabel.Size = UDim2.new(1, -24, 0, 0);
+	messageLabel.Position = UDim2.new(0, 12, 0, 48);
+	messageLabel.BackgroundTransparency = 1;
+	messageLabel.Font = Enum.Font.Gotham;
+	messageLabel.TextSize = 14;
+	messageLabel.TextColor3 = Color3.fromRGB(200, 200, 200);
+	messageLabel.TextXAlignment = Enum.TextXAlignment.Left;
+	messageLabel.TextYAlignment = Enum.TextYAlignment.Top;
+	messageLabel.TextWrapped = true;
+	messageLabel.RichText = true;
+	messageLabel.Text = message;
+	messageLabel.ZIndex = 3;
+	messageLabel.Parent = frame;
+	local textSize = game:GetService("TextService"):GetTextSize(message, 14, Enum.Font.Gotham, Vector2.new(frame.Size.X.Offset - 24, 1000));
+	messageLabel.Size = UDim2.new(1, -24, 0, textSize.Y + 10);
+	local progressBarContainer = Instance.new("Frame");
+	progressBarContainer.Name = "ProgressBarContainer";
+	progressBarContainer.Size = UDim2.new(1, 0, 0, 4);
+	progressBarContainer.Position = UDim2.new(0, 0, 1, -4);
+	progressBarContainer.BackgroundTransparency = 1;
+	progressBarContainer.ZIndex = 3;
+	progressBarContainer.Parent = frame;
+	local progressBar = Instance.new("Frame");
+	progressBar.Name = "ProgressBar";
+	progressBar.Size = UDim2.new(1, 0, 1, 0);
+	progressBar.BackgroundColor3 = msgType.BAR_COLOR;
+	progressBar.BorderSizePixel = 0;
+	progressBar.ZIndex = 3;
+	progressBar.Parent = progressBarContainer;
+	local progressBarCorner = Instance.new("UICorner");
+	progressBarCorner.CornerRadius = UDim.new(0, 2);
+	progressBarCorner.Parent = progressBar;
+	frame.Size = UDim2.new(1, 0, 0, messageLabel.Position.Y.Offset + messageLabel.Size.Y.Offset + 12);
+	return frame, progressBar;
+end
+MessageSystem.RepositionMessages = function(self)
+	local yOffset = 0;
+	for i = #activeMessages, 1, -1 do
+		local FlatIdent_2584C = 0;
+		local msg;
+		while true do
+			if (FlatIdent_2584C == 0) then
+				msg = activeMessages[i];
+				if (msg and msg.Parent) then
+					local newPos = UDim2.new(0, 0, 1, -yOffset - msg.Size.Y.Offset);
+					local tweenInfo = TweenInfo.new(0.3, Enum.EasingStyle.Quart, Enum.EasingDirection.Out);
+					local tween = TweenService:Create(msg, tweenInfo, {Position=newPos});
+					tween:Play();
+					yOffset = yOffset + msg.Size.Y.Offset + 10;
+				end
+				break;
+			end
+		end
+	end
+end;
+MessageSystem.Show = function(self, title, message, messageType)
+	local FlatIdent_378D0 = 0;
+	local messageFrame;
+	local progressBar;
+	local tweenInfo;
+	local tweenIn;
+	local progressTweenInfo;
+	local progressTween;
+	while true do
+		if (3 == FlatIdent_378D0) then
+			progressTween = TweenService:Create(progressBar, progressTweenInfo, {Size=UDim2.new(0, 0, 1, 0)});
+			progressTween:Play();
+			task.delay(MESSAGE_DURATION, function()
+				local tweenOut = TweenService:Create(messageFrame, tweenInfo, {Position=UDim2.new(1, 0, messageFrame.Position.Y.Scale, messageFrame.Position.Y.Offset),BackgroundTransparency=1});
+				tweenOut:Play();
+				tweenOut.Completed:Connect(function()
+					local FlatIdent_23BE8 = 0;
+					while true do
+						if (1 == FlatIdent_23BE8) then
+							self:RepositionMessages();
+							break;
+						end
+						if (FlatIdent_23BE8 == 0) then
+							for i, msg in ipairs(activeMessages) do
+								if (msg == messageFrame) then
+									table.remove(activeMessages, i);
+									break;
+								end
+							end
+							messageFrame:Destroy();
+							FlatIdent_23BE8 = 1;
+						end
+					end
+				end);
+			end);
+			return messageFrame;
+		end
+		if (FlatIdent_378D0 == 2) then
+			tweenInfo = TweenInfo.new(0.3, Enum.EasingStyle.Quart, Enum.EasingDirection.Out);
+			tweenIn = TweenService:Create(messageFrame, tweenInfo, {BackgroundTransparency=0.2});
+			tweenIn:Play();
+			progressTweenInfo = TweenInfo.new(MESSAGE_DURATION, Enum.EasingStyle.Linear);
+			FlatIdent_378D0 = 3;
+		end
+		if (FlatIdent_378D0 == 1) then
+			messageFrame.BackgroundTransparency = 1;
+			progressBar.Size = UDim2.new(1, 0, 1, 0);
+			table.insert(activeMessages, messageFrame);
+			self:RepositionMessages();
+			FlatIdent_378D0 = 2;
+		end
+		if (FlatIdent_378D0 == 0) then
+			if not self.ScreenGui then
+				local FlatIdent_2BD95 = 0;
+				while true do
+					if (FlatIdent_2BD95 == 0) then
+						self.ScreenGui, self.Container = setupGui();
+						self.ScreenGui.Parent = player.PlayerGui;
+						break;
+					end
+				end
+			end
+			messageFrame, progressBar = createMessageFrame(title, message, messageType);
+			messageFrame.Parent = self.Container;
+			messageFrame.Position = UDim2.new(1, 0, 1, 0);
+			FlatIdent_378D0 = 1;
+		end
+	end
+end;
+MessageSystem.Info = function(self, title, message)
+	return self:Show(title, message, "INFO");
+end;
+MessageSystem.Warning = function(self, title, message)
+	return self:Show(title, message, "WARNING");
+end;
+local library = {};
+library.theme = {background=Color3.fromRGB(30, 30, 30),windowBackground=Color3.fromRGB(30, 30, 30),foreground=Color3.fromRGB(255, 255, 255),muted=Color3.fromRGB(175, 175, 175),accent=Color3.fromRGB(0, 170, 255),success=Color3.fromRGB(0, 255, 0),warning=Color3.fromRGB(255, 255, 0),error=Color3.fromRGB(255, 0, 0)};
+local currentlyDraggedWindow = nil;
+local WINDOW_PADDING = 10;
+local DRAG_THRESHOLD = 5;
+local MOBILE = UserInputService.TouchEnabled;
+local ScreenGui = Instance.new("ScreenGui");
+ScreenGui.Name = "VAPE";
+ScreenGui.ResetOnSpawn = false;
+ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling;
+ScreenGui.Enabled = false;
+if MOBILE then
+	ScreenGui.IgnoreGuiInset = true;
+end
+if RunService:IsStudio() then
+	ScreenGui.Parent = game.Players.LocalPlayer:WaitForChild("PlayerGui");
+else
+	ScreenGui.Parent = game:GetService("CoreGui");
+end
+local function CreateTween(instance, properties, duration)
+	return TweenService:Create(instance, TweenInfo.new(duration or 0.2, Enum.EasingStyle.Quad), properties);
+end
+local WindowManager = {activeWindow=nil,zIndex=1,windows={},windowOffset=0};
+WindowManager.BringToFront = function(self, window)
+	local FlatIdent_39B0 = 0;
+	while true do
+		if (FlatIdent_39B0 == 0) then
+			self.zIndex = self.zIndex + 1;
+			window.ZIndex = self.zIndex;
+			FlatIdent_39B0 = 1;
+		end
+		if (FlatIdent_39B0 == 1) then
+			self.activeWindow = window;
+			break;
+		end
+	end
+end;
+local blur = Instance.new("BlurEffect");
+blur.Size = 12;
+blur.Parent = Lighting;
+blur.Enabled = false;
+local function toggleBlur(state)
+	blur.Enabled = state;
+end
+UserInputService.InputBegan:Connect(function(input, gameProcessed)
+	if gameProcessed then
+		return;
+	end
+	if (input.KeyCode == Enum.KeyCode.RightShift) then
+		ScreenGui.Enabled = not ScreenGui.Enabled;
+		toggleBlur(ScreenGui.Enabled);
+	end
+end);
+library.CreateWindow = function(self, name, fixed, Width, Height)
+	local window = Instance.new("Frame");
+	window.Name = name;
+	window.Parent = ScreenGui;
+	window.BackgroundColor3 = self.theme.windowBackground;
+	window.BackgroundTransparency = 0.1;
+	window.BorderSizePixel = 0;
+	window.ClipsDescendants = true;
+	window.ZIndex = WindowManager.zIndex;
+	window.Visible = false;
+	WindowManager.zIndex = WindowManager.zIndex + 1;
+	window:SetAttribute("Fixed", fixed);
+	if fixed then
+		window.Visible = true;
+	end
+	window.Size = UDim2.new(0, Width, 0, Height);
+	if not fixed then
+		local offset = WindowManager.windowOffset;
+		local screenWidth, screenHeight = ScreenGui.AbsoluteSize.X, ScreenGui.AbsoluteSize.Y;
+		local windowX = ((screenWidth - Width) / 2) + offset;
+		local windowY = ((screenHeight - Height) / 2) + offset;
+		windowX = math.clamp(windowX, WINDOW_PADDING, (screenWidth - Width) - WINDOW_PADDING);
+		windowY = math.clamp(windowY, WINDOW_PADDING, (screenHeight - Height) - WINDOW_PADDING);
+		window.Position = UDim2.new(0, windowX, 0, windowY);
+		WindowManager.windowOffset = offset + 20;
+		WindowManager.windows[window] = true;
+	else
+		local FlatIdent_61585 = 0;
+		while true do
+			if (0 == FlatIdent_61585) then
+				window.Position = UDim2.new(0, WINDOW_PADDING, 0, WINDOW_PADDING);
+				WindowManager.windows[window] = true;
+				break;
+			end
+		end
+	end
+	local corner = Instance.new("UICorner");
+	corner.CornerRadius = UDim.new(0, 6);
+	corner.Parent = window;
+	local titleBar = Instance.new("Frame");
+	titleBar.Name = "TitleBar";
+	titleBar.Parent = window;
+	titleBar.BackgroundColor3 = self.theme.background;
+	titleBar.BackgroundTransparency = 0.5;
+	titleBar.BorderSizePixel = 0;
+	titleBar.Size = UDim2.new(1, 0, 0, 30);
+	local titleCorner = Instance.new("UICorner");
+	titleCorner.CornerRadius = UDim.new(0, 6);
+	titleCorner.Parent = titleBar;
+	local title = Instance.new("TextLabel");
+	title.Name = "Title";
+	title.Parent = titleBar;
+	title.BackgroundTransparency = 1;
+	title.Position = UDim2.new(0, 10, 0, 0);
+	title.Size = UDim2.new(1, -50, 1, 0);
+	title.Font = Enum.Font.GothamBold;
+	title.Text = name;
+	title.TextColor3 = self.theme.foreground;
+	title.TextSize = 14;
+	title.TextXAlignment = Enum.TextXAlignment.Left;
+	local toggleButton = Instance.new("TextButton");
+	toggleButton.Name = "ToggleButton";
+	toggleButton.Parent = titleBar;
+	toggleButton.BackgroundTransparency = 1;
+	toggleButton.Size = UDim2.new(0, 20, 0, 20);
+	toggleButton.Position = UDim2.new(1, -25, 0.5, -10);
+	toggleButton.Text = "-";
+	toggleButton.TextColor3 = self.theme.foreground;
+	toggleButton.Font = Enum.Font.GothamBold;
+	toggleButton.TextSize = 16;
+	local expanded = true;
+	local expandedSize = window.Size;
+	local collapsedSize = UDim2.new(expandedSize.X.Scale, expandedSize.X.Offset, 0, titleBar.Size.Y.Offset);
+	toggleButton.MouseButton1Click:Connect(function()
+		if expanded then
+			local FlatIdent_A36C = 0;
+			while true do
+				if (FlatIdent_A36C == 0) then
+					expanded = false;
+					toggleButton.Text = "+";
+					FlatIdent_A36C = 1;
+				end
+				if (FlatIdent_A36C == 1) then
+					CreateTween(window, {Size=collapsedSize}, 0.3):Play();
+					break;
+				end
+			end
+		else
+			expanded = true;
+			toggleButton.Text = "-";
+			CreateTween(window, {Size=expandedSize}, 0.3):Play();
+		end
+	end);
+	local content = Instance.new("ScrollingFrame");
+	content.Name = "Content";
+	content.Parent = window;
+	content.BackgroundTransparency = 1;
+	content.Position = UDim2.new(0, 0, 0, 30);
+	content.Size = UDim2.new(1, 0, 1, -30);
+	content.ScrollBarThickness = 4;
+	content.ScrollBarImageColor3 = self.theme.accent;
+	content.ScrollBarImageTransparency = 0.8;
+	content.CanvasSize = UDim2.new(0, 0, 0, 0);
+	local list = Instance.new("UIListLayout");
+	list.Parent = content;
+	list.SortOrder = Enum.SortOrder.LayoutOrder;
+	list.Padding = UDim.new(0, 4);
+	local padding = Instance.new("UIPadding");
+	padding.Parent = content;
+	padding.PaddingLeft = UDim.new(0, 8);
+	padding.PaddingRight = UDim.new(0, 8);
+	padding.PaddingTop = UDim.new(0, 8);
+	padding.PaddingBottom = UDim.new(0, 8);
+	list:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
+		content.CanvasSize = UDim2.new(0, 0, 0, list.AbsoluteContentSize.Y + 16);
+	end);
+	if not fixed then
+		local dragStart, startPos = nil, nil;
+		titleBar.InputBegan:Connect(function(input)
+			if ((input.UserInputType == Enum.UserInputType.MouseButton1) or (input.UserInputType == Enum.UserInputType.Touch)) then
+				if not currentlyDraggedWindow then
+					local FlatIdent_7FAC9 = 0;
+					while true do
+						if (FlatIdent_7FAC9 == 1) then
+							startPos = window.Position;
+							WindowManager:BringToFront(window);
+							break;
+						end
+						if (0 == FlatIdent_7FAC9) then
+							currentlyDraggedWindow = window;
+							dragStart = input.Position;
+							FlatIdent_7FAC9 = 1;
+						end
+					end
+				end
+			end
+		end);
+		UserInputService.InputChanged:Connect(function(input)
+			if ((currentlyDraggedWindow == window) and ((input.UserInputType == Enum.UserInputType.MouseMovement) or (input.UserInputType == Enum.UserInputType.Touch))) then
+				local FlatIdent_77C29 = 0;
+				local delta;
+				while true do
+					if (FlatIdent_77C29 == 0) then
+						delta = input.Position - dragStart;
+						if (delta.Magnitude >= DRAG_THRESHOLD) then
+							local FlatIdent_703C8 = 0;
+							local newPos;
+							while true do
+								if (FlatIdent_703C8 == 0) then
+									newPos = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y);
+									window.Position = newPos;
+									break;
+								end
+							end
+						end
+						break;
+					end
+				end
+			end
+		end);
+		UserInputService.InputEnded:Connect(function(input)
+			if ((currentlyDraggedWindow == window) and ((input.UserInputType == Enum.UserInputType.MouseButton1) or (input.UserInputType == Enum.UserInputType.Touch))) then
+				currentlyDraggedWindow = nil;
+			end
+		end);
+	end
+	return {Window=window,Content=content,Fixed=fixed};
+end;
+library.TagWindow = library.CreateWindow;
+library.CreateItem = function(self, parent, name, options, callback, ConfigState, isWindowToggle)
+	local item = Instance.new("Frame");
+	item.Name = name;
+	item.Parent = parent;
+	item.BackgroundColor3 = self.theme.background;
+	item.BackgroundTransparency = 0.9;
+	item.Size = UDim2.new(1, 0, 0, 32);
+	item.ClipsDescendants = true;
+	local corner = Instance.new("UICorner");
+	corner.CornerRadius = UDim.new(0, 4);
+	corner.Parent = item;
+	local button = Instance.new("TextButton");
+	button.Name = "Button";
+	button.Parent = item;
+	button.BackgroundTransparency = 1;
+	button.Size = UDim2.new(1, -30, 0, 32);
+	button.Position = UDim2.new(0, 0, 0, 0);
+	button.Font = Enum.Font.Gotham;
+	button.Text = name;
+	button.TextColor3 = self.theme.foreground;
+	button.TextSize = 13;
+	button.TextXAlignment = Enum.TextXAlignment.Left;
+	button.AutoButtonColor = false;
+	local padding = Instance.new("UIPadding");
+	padding.Parent = button;
+	padding.PaddingLeft = UDim.new(0, 10);
+	local toggled = ConfigState or false;
+	local enabledBackgroundColor = Color3.fromRGB(255, 255, 255);
+	local enabledTextColor = Color3.fromRGB(0, 0, 0);
+	local disabledBackgroundColor = self.theme.background;
+	local disabledTextColor = self.theme.foreground;
+	local disabledBackgroundTransparency = 0.9;
+	local settings = Instance.new("ImageButton");
+	settings.Name = "Settings";
+	settings.Parent = item;
+	settings.Visible = false;
+	settings.BackgroundTransparency = 1;
+	settings.AnchorPoint = Vector2.new(1, 0);
+	settings.Position = UDim2.new(1, -24, 0, 8);
+	settings.Size = UDim2.new(0, 16, 0, 16);
+	settings.Image = "rbxassetid://3926307971";
+	settings.ImageRectOffset = Vector2.new(324, 124);
+	settings.ImageRectSize = Vector2.new(36, 36);
+	settings.ImageColor3 = self.theme.foreground;
+	settings.ImageTransparency = 0.5;
+	local defaultGearColor = self.theme.foreground;
+	if toggled then
+		CreateTween(item, {BackgroundColor3=enabledBackgroundColor,BackgroundTransparency=0}, 0.2):Play();
+		CreateTween(button, {TextColor3=enabledTextColor}, 0.2):Play();
+		CreateTween(settings, {ImageColor3=enabledTextColor}, 0.2):Play();
+	else
+		local FlatIdent_295EB = 0;
+		while true do
+			if (FlatIdent_295EB == 1) then
+				CreateTween(settings, {ImageColor3=defaultGearColor}, 0.2):Play();
+				break;
+			end
+			if (FlatIdent_295EB == 0) then
+				CreateTween(item, {BackgroundColor3=disabledBackgroundColor,BackgroundTransparency=disabledBackgroundTransparency}, 0.2):Play();
+				CreateTween(button, {TextColor3=disabledTextColor}, 0.2):Play();
+				FlatIdent_295EB = 1;
+			end
+		end
+	end
+	button.MouseButton1Click:Connect(function()
+		local FlatIdent_817B0 = 0;
+		while true do
+			if (FlatIdent_817B0 == 0) then
+				toggled = not toggled;
+				if toggled then
+					local FlatIdent_9622C = 0;
+					while true do
+						if (FlatIdent_9622C == 1) then
+							CreateTween(button, {TextColor3=enabledTextColor}, 0.2):Play();
+							CreateTween(settings, {ImageColor3=enabledTextColor}, 0.2):Play();
+							break;
+						end
+						if (FlatIdent_9622C == 0) then
+							if not isWindowToggle then
+								MessageSystem:Info(name, name .. " has been <font color='rgb(0,255,0)'>enabled</font>.");
+							end
+							CreateTween(item, {BackgroundColor3=enabledBackgroundColor,BackgroundTransparency=0}, 0.2):Play();
+							FlatIdent_9622C = 1;
+						end
+					end
+				else
+					if not isWindowToggle then
+						MessageSystem:Info(name, name .. " has been <font color='rgb(255,0,0)'>disabled</font>.");
+					end
+					CreateTween(item, {BackgroundColor3=disabledBackgroundColor,BackgroundTransparency=disabledBackgroundTransparency}, 0.2):Play();
+					CreateTween(button, {TextColor3=disabledTextColor}, 0.2):Play();
+					CreateTween(settings, {ImageColor3=defaultGearColor}, 0.2):Play();
+				end
+				FlatIdent_817B0 = 1;
+			end
+			if (FlatIdent_817B0 == 1) then
+				callback(toggled);
+				break;
+			end
+		end
+	end);
+	button.MouseEnter:Connect(function()
+		if not toggled then
+			CreateTween(item, {BackgroundTransparency=0.8}, 0.2):Play();
+		end
+	end);
+	button.MouseLeave:Connect(function()
+		if not toggled then
+			CreateTween(item, {BackgroundTransparency=0.9}, 0.2):Play();
+		end
+	end);
+	if options then
+		local FlatIdent_75B50 = 0;
+		local settingsExpanded;
+		local settingsArea;
+		local areaCorner;
+		local settingsPanel;
+		local panelList;
+		local panelPadding;
+		local itemPaddingBottom;
+		local updateExpandedSize;
+		while true do
+			if (3 == FlatIdent_75B50) then
+				settingsArea.ClipsDescendants = true;
+				settingsArea.ZIndex = 9;
+				areaCorner = Instance.new("UICorner");
+				areaCorner.CornerRadius = UDim.new(0, 4);
+				FlatIdent_75B50 = 4;
+			end
+			if (FlatIdent_75B50 == 10) then
+				settings.MouseButton1Click:Connect(function()
+					if settingsExpanded then
+						local FlatIdent_69253 = 0;
+						local tween;
+						while true do
+							if (1 == FlatIdent_69253) then
+								tween:Play();
+								tween.Completed:Connect(function()
+									settingsArea.Visible = false;
+								end);
+								FlatIdent_69253 = 2;
+							end
+							if (0 == FlatIdent_69253) then
+								settingsExpanded = false;
+								tween = CreateTween(settingsArea, {Size=UDim2.new(1, 0, 0, 0)}, 0.3);
+								FlatIdent_69253 = 1;
+							end
+							if (FlatIdent_69253 == 2) then
+								CreateTween(item, {Size=UDim2.new(1, 0, 0, 32)}, 0.3):Play();
+								break;
+							end
+						end
+					else
+						local FlatIdent_90A41 = 0;
+						local expandedPanelHeight;
+						local newItemHeight;
+						while true do
+							if (FlatIdent_90A41 == 0) then
+								settingsExpanded = true;
+								settingsArea.Visible = true;
+								FlatIdent_90A41 = 1;
+							end
+							if (FlatIdent_90A41 == 1) then
+								expandedPanelHeight, newItemHeight = updateExpandedSize();
+								CreateTween(settingsArea, {Size=UDim2.new(1, 0, 0, expandedPanelHeight)}, 0.3):Play();
+								FlatIdent_90A41 = 2;
+							end
+							if (FlatIdent_90A41 == 2) then
+								CreateTween(item, {Size=UDim2.new(1, 0, 0, 32)}, 0.3):Play();
+								break;
+							end
+						end
+					end
+				end);
+				panelList:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
+					if settingsExpanded then
+						local expandedPanelHeight, newItemHeight = updateExpandedSize();
+						CreateTween(settingsArea, {Size=UDim2.new(1, 0, 0, expandedPanelHeight)}, 0.3):Play();
+						CreateTween(item, {Size=UDim2.new(1, 0, 0, 32)}, 0.3):Play();
+					end
+				end);
+				break;
+			end
+			if (FlatIdent_75B50 == 9) then
+				itemPaddingBottom.Parent = item;
+				itemPaddingBottom.PaddingBottom = UDim.new(0, 8);
+				updateExpandedSize = nil;
+				function updateExpandedSize()
+					local expandedPanelHeight = panelList.AbsoluteContentSize.Y + panelPadding.PaddingTop.Offset + panelPadding.PaddingBottom.Offset;
+					local newItemHeight = 32 + 12 + expandedPanelHeight;
+					return expandedPanelHeight, newItemHeight;
+				end
+				FlatIdent_75B50 = 10;
+			end
+			if (FlatIdent_75B50 == 7) then
+				panelPadding = Instance.new("UIPadding");
+				panelPadding.Parent = settingsPanel;
+				panelPadding.PaddingLeft = UDim.new(0, 8);
+				panelPadding.PaddingRight = UDim.new(0, 8);
+				FlatIdent_75B50 = 8;
+			end
+			if (FlatIdent_75B50 == 5) then
+				settingsPanel.BackgroundTransparency = 1;
+				settingsPanel.BorderSizePixel = 0;
+				settingsPanel.Size = UDim2.new(1, 0, 1, 0);
+				settingsPanel.Position = UDim2.new(0, 0, 0, 0);
+				FlatIdent_75B50 = 6;
+			end
+			if (8 == FlatIdent_75B50) then
+				panelPadding.PaddingTop = UDim.new(0, 8);
+				panelPadding.PaddingBottom = UDim.new(0, 8);
+				itemPaddingBottom = Instance.new("UIPadding");
+				itemPaddingBottom.Name = "ItemPaddingBottom";
+				FlatIdent_75B50 = 9;
+			end
+			if (0 == FlatIdent_75B50) then
+				settingsExpanded = false;
+				settings.Visible = true;
+				settingsArea = Instance.new("Frame");
+				settingsArea.Name = "SettingsArea_" .. item.Name;
+				FlatIdent_75B50 = 1;
+			end
+			if (FlatIdent_75B50 == 4) then
+				areaCorner.Parent = settingsArea;
+				settingsPanel = Instance.new("Frame");
+				settingsPanel.Name = "SettingsPanel";
+				settingsPanel.Parent = settingsArea;
+				FlatIdent_75B50 = 5;
+			end
+			if (FlatIdent_75B50 == 1) then
+				settingsArea.Parent = parent;
+				settingsArea.BackgroundColor3 = self.theme.windowBackground;
+				settingsArea.BackgroundTransparency = 0.9;
+				settingsArea.BorderSizePixel = 1;
+				FlatIdent_75B50 = 2;
+			end
+			if (FlatIdent_75B50 == 2) then
+				settingsArea.BorderColor3 = self.theme.background;
+				settingsArea.Position = UDim2.new(0, 0, 0, 44);
+				settingsArea.Size = UDim2.new(1, 0, 0, 0);
+				settingsArea.Visible = false;
+				FlatIdent_75B50 = 3;
+			end
+			if (FlatIdent_75B50 == 6) then
+				panelList = Instance.new("UIListLayout");
+				panelList.Parent = settingsPanel;
+				panelList.SortOrder = Enum.SortOrder.LayoutOrder;
+				panelList.Padding = UDim.new(0, 4);
+				FlatIdent_75B50 = 7;
+			end
+		end
+	end
+	spawn(function()
+		if ConfigState then
+			callback(ConfigState);
+		end
+	end);
+	return item;
+end;
+library.CreateSlider = function(self, item, name, min, max, default, callback, ConfigValue)
+	local FlatIdent_1B881 = 0;
+	local SettingsArea;
+	local parent;
+	local slider;
+	local title;
+	local sliderBar;
+	local sliderButton;
+	local buttonCorner;
+	local value;
+	local dragging;
+	while true do
+		if (FlatIdent_1B881 == 12) then
+			sliderButton.InputBegan:Connect(function(input)
+				if ((input.UserInputType == Enum.UserInputType.MouseButton1) or (input.UserInputType == Enum.UserInputType.Touch)) then
+					dragging = true;
+				end
+			end);
+			sliderButton.InputEnded:Connect(function(input)
+				if ((input.UserInputType == Enum.UserInputType.MouseButton1) or (input.UserInputType == Enum.UserInputType.Touch)) then
+					dragging = false;
+				end
+			end);
+			UserInputService.InputChanged:Connect(function(input)
+				if (dragging and ((input.UserInputType == Enum.UserInputType.MouseMovement) or (input.UserInputType == Enum.UserInputType.Touch))) then
+					local FlatIdent_42BD8 = 0;
+					local mousePos;
+					local relativePos;
+					local percentage;
+					local newValue;
+					while true do
+						if (FlatIdent_42BD8 == 1) then
+							percentage = math.clamp(relativePos.X / sliderBar.AbsoluteSize.X, 0, 1);
+							newValue = math.floor(min + ((max - min) * percentage));
+							FlatIdent_42BD8 = 2;
+						end
+						if (FlatIdent_42BD8 == 2) then
+							sliderButton.Position = UDim2.new(percentage, -0.5, 0.5, 0);
+							value.Text = tostring(newValue);
+							FlatIdent_42BD8 = 3;
+						end
+						if (FlatIdent_42BD8 == 3) then
+							if callback then
+								callback(newValue);
+							end
+							break;
+						end
+						if (FlatIdent_42BD8 == 0) then
+							mousePos = UserInputService:GetMouseLocation();
+							relativePos = mousePos - sliderBar.AbsolutePosition;
+							FlatIdent_42BD8 = 1;
+						end
+					end
+				end
+			end);
+			spawn(function()
+				if ConfigValue then
+					callback(ConfigValue);
+				end
+			end);
+			break;
+		end
+		if (FlatIdent_1B881 == 1) then
+			slider.Parent = parent;
+			slider.BackgroundTransparency = 1;
+			slider.Size = UDim2.new(1, -10, 0, 25);
+			title = Instance.new("TextLabel");
+			FlatIdent_1B881 = 2;
+		end
+		if (FlatIdent_1B881 == 0) then
+			SettingsArea = item.Parent:FindFirstChild("SettingsArea_" .. item.Name);
+			parent = SettingsArea:FindFirstChild("SettingsPanel");
+			slider = Instance.new("Frame");
+			slider.Name = name;
+			FlatIdent_1B881 = 1;
+		end
+		if (FlatIdent_1B881 == 5) then
+			sliderBar.BackgroundColor3 = self.theme.muted;
+			sliderBar.BorderSizePixel = 0;
+			sliderBar.Position = UDim2.new(0, 0, 1, -5);
+			sliderBar.Size = UDim2.new(1, 0, 0, 2);
+			FlatIdent_1B881 = 6;
+		end
+		if (FlatIdent_1B881 == 4) then
+			title.TextXAlignment = Enum.TextXAlignment.Left;
+			sliderBar = Instance.new("Frame");
+			sliderBar.Name = "SliderBar";
+			sliderBar.Parent = slider;
+			FlatIdent_1B881 = 5;
+		end
+		if (FlatIdent_1B881 == 7) then
+			sliderButton.BackgroundColor3 = self.theme.accent;
+			sliderButton.BorderSizePixel = 0;
+			sliderButton.Size = UDim2.new(0, 10, 0, 10);
+			sliderButton.Position = UDim2.new((default - min) / (max - min), -0.5, 0.5, 0);
+			FlatIdent_1B881 = 8;
+		end
+		if (FlatIdent_1B881 == 8) then
+			sliderButton.AnchorPoint = Vector2.new(0.5, 0.5);
+			buttonCorner = Instance.new("UICorner");
+			buttonCorner.CornerRadius = UDim.new(0, 5);
+			buttonCorner.Parent = sliderButton;
+			FlatIdent_1B881 = 9;
+		end
+		if (FlatIdent_1B881 == 11) then
+			value.TextColor3 = self.theme.foreground;
+			value.TextSize = 12;
+			value.TextXAlignment = Enum.TextXAlignment.Right;
+			dragging = false;
+			FlatIdent_1B881 = 12;
+		end
+		if (FlatIdent_1B881 == 2) then
+			title.Name = "Title";
+			title.Parent = slider;
+			title.BackgroundTransparency = 1;
+			title.Size = UDim2.new(1, 0, 0, 20);
+			FlatIdent_1B881 = 3;
+		end
+		if (FlatIdent_1B881 == 6) then
+			if ConfigValue then
+				default = ConfigValue;
+			end
+			sliderButton = Instance.new("Frame");
+			sliderButton.Name = "SliderButton";
+			sliderButton.Parent = sliderBar;
+			FlatIdent_1B881 = 7;
+		end
+		if (9 == FlatIdent_1B881) then
+			value = Instance.new("TextLabel");
+			value.Name = "Value";
+			value.Parent = slider;
+			value.BackgroundTransparency = 1;
+			FlatIdent_1B881 = 10;
+		end
+		if (FlatIdent_1B881 == 10) then
+			value.Position = UDim2.new(1, -30, 0, 0);
+			value.Size = UDim2.new(0, 30, 0, 20);
+			value.Font = Enum.Font.Gotham;
+			value.Text = tostring(default);
+			FlatIdent_1B881 = 11;
+		end
+		if (FlatIdent_1B881 == 3) then
+			title.Font = Enum.Font.Gotham;
+			title.Text = name;
+			title.TextColor3 = self.theme.foreground;
+			title.TextSize = 12;
+			FlatIdent_1B881 = 4;
+		end
+	end
+end;
+library.CreateRangeSlider = function(self, item, name, min, max, defaultMin, defaultMax, callback, ConfigMin, ConfigMax)
+	local FlatIdent_912A7 = 0;
+	local SettingsArea;
+	local parent;
+	local slider;
+	local title;
+	local rangeValueLabel;
+	local sliderBar;
+	local minSliderButton;
+	local minButtonCorner;
+	local maxSliderButton;
+	local maxButtonCorner;
+	local draggingMin;
+	local draggingMax;
+	while true do
+		if (FlatIdent_912A7 == 0) then
+			SettingsArea = item.Parent:FindFirstChild("SettingsArea_" .. item.Name);
+			parent = SettingsArea:FindFirstChild("SettingsPanel");
+			if (ConfigMin and ConfigMax) then
+				local FlatIdent_956D = 0;
+				while true do
+					if (FlatIdent_956D == 0) then
+						min = ConfigMin;
+						max = ConfigMax;
+						break;
+					end
+				end
+			end
+			slider = Instance.new("Frame");
+			slider.Name = name;
+			slider.Parent = parent;
+			FlatIdent_912A7 = 1;
+		end
+		if (FlatIdent_912A7 == 6) then
+			minSliderButton = Instance.new("Frame");
+			minSliderButton.Name = "MinSliderButton";
+			minSliderButton.Parent = sliderBar;
+			minSliderButton.BackgroundColor3 = self.theme.accent;
+			minSliderButton.BorderSizePixel = 0;
+			minSliderButton.Size = UDim2.new(0, 10, 0, 10);
+			FlatIdent_912A7 = 7;
+		end
+		if (FlatIdent_912A7 == 10) then
+			minSliderButton.InputBegan:Connect(function(input)
+				if ((input.UserInputType == Enum.UserInputType.MouseButton1) or (input.UserInputType == Enum.UserInputType.Touch)) then
+					draggingMin = true;
+				end
+			end);
+			maxSliderButton.InputBegan:Connect(function(input)
+				if ((input.UserInputType == Enum.UserInputType.MouseButton1) or (input.UserInputType == Enum.UserInputType.Touch)) then
+					draggingMax = true;
+				end
+			end);
+			UserInputService.InputEnded:Connect(function(input)
+				if ((input.UserInputType == Enum.UserInputType.MouseButton1) or (input.UserInputType == Enum.UserInputType.Touch)) then
+					local FlatIdent_3B868 = 0;
+					while true do
+						if (FlatIdent_3B868 == 0) then
+							draggingMin = false;
+							draggingMax = false;
+							break;
+						end
+					end
+				end
+			end);
+			UserInputService.InputChanged:Connect(function(input)
+				if ((input.UserInputType == Enum.UserInputType.MouseMovement) or (input.UserInputType == Enum.UserInputType.Touch)) then
+					local FlatIdent_D14D = 0;
+					local mousePos;
+					local relativePos;
+					local percentage;
+					local newValue;
+					while true do
+						if (FlatIdent_D14D == 0) then
+							mousePos = UserInputService:GetMouseLocation();
+							relativePos = mousePos - sliderBar.AbsolutePosition;
+							FlatIdent_D14D = 1;
+						end
+						if (1 == FlatIdent_D14D) then
+							percentage = math.clamp(relativePos.X / sliderBar.AbsoluteSize.X, 0, 1);
+							newValue = math.floor(min + ((max - min) * percentage));
+							FlatIdent_D14D = 2;
+						end
+						if (FlatIdent_D14D == 2) then
+							if draggingMin then
+								local FlatIdent_3ACCC = 0;
+								local currentMax;
+								while true do
+									if (FlatIdent_3ACCC == 1) then
+										minSliderButton.Position = UDim2.new(percentage, -0.5, 0.5, 0);
+										rangeValueLabel.Text = tostring(newValue) .. "-" .. tostring(currentMax);
+										FlatIdent_3ACCC = 2;
+									end
+									if (FlatIdent_3ACCC == 0) then
+										currentMax = tonumber(string.split(rangeValueLabel.Text, "-")[2]);
+										if (newValue > currentMax) then
+											newValue = currentMax;
+										end
+										FlatIdent_3ACCC = 1;
+									end
+									if (FlatIdent_3ACCC == 2) then
+										if callback then
+											callback(newValue, currentMax);
+										end
+										break;
+									end
+								end
+							elseif draggingMax then
+								local FlatIdent_90113 = 0;
+								local currentMin;
+								while true do
+									if (FlatIdent_90113 == 2) then
+										if callback then
+											callback(currentMin, newValue);
+										end
+										break;
+									end
+									if (FlatIdent_90113 == 1) then
+										maxSliderButton.Position = UDim2.new(percentage, -0.5, 0.5, 0);
+										rangeValueLabel.Text = tostring(currentMin) .. "-" .. tostring(newValue);
+										FlatIdent_90113 = 2;
+									end
+									if (FlatIdent_90113 == 0) then
+										currentMin = tonumber(string.split(rangeValueLabel.Text, "-")[1]);
+										if (newValue < currentMin) then
+											newValue = currentMin;
+										end
+										FlatIdent_90113 = 1;
+									end
+								end
+							end
+							break;
+						end
+					end
+				end
+			end);
+			spawn(function()
+				if (ConfigMin and ConfigMax) then
+					callback(ConfigMin, ConfigMax);
+				end
+			end);
+			break;
+		end
+		if (FlatIdent_912A7 == 2) then
+			title.Size = UDim2.new(1, 0, 0, 20);
+			title.Font = Enum.Font.Gotham;
+			title.Text = name;
+			title.TextColor3 = self.theme.foreground;
+			title.TextSize = 12;
+			title.TextXAlignment = Enum.TextXAlignment.Left;
+			FlatIdent_912A7 = 3;
+		end
+		if (FlatIdent_912A7 == 7) then
+			minSliderButton.Position = UDim2.new((defaultMin - min) / (max - min), -0.5, 0.5, 0);
+			minSliderButton.AnchorPoint = Vector2.new(0.5, 0.5);
+			minButtonCorner = Instance.new("UICorner");
+			minButtonCorner.CornerRadius = UDim.new(0, 5);
+			minButtonCorner.Parent = minSliderButton;
+			maxSliderButton = Instance.new("Frame");
+			FlatIdent_912A7 = 8;
+		end
+		if (FlatIdent_912A7 == 5) then
+			sliderBar.Name = "SliderBar";
+			sliderBar.Parent = slider;
+			sliderBar.BackgroundColor3 = self.theme.muted;
+			sliderBar.BorderSizePixel = 0;
+			sliderBar.Position = UDim2.new(0, 0, 1, -20);
+			sliderBar.Size = UDim2.new(1, 0, 0, 2);
+			FlatIdent_912A7 = 6;
+		end
+		if (FlatIdent_912A7 == 4) then
+			rangeValueLabel.Font = Enum.Font.Gotham;
+			rangeValueLabel.Text = defaultMin .. "-" .. defaultMax;
+			rangeValueLabel.TextColor3 = self.theme.muted;
+			rangeValueLabel.TextSize = 12;
+			rangeValueLabel.TextXAlignment = Enum.TextXAlignment.Right;
+			sliderBar = Instance.new("Frame");
+			FlatIdent_912A7 = 5;
+		end
+		if (FlatIdent_912A7 == 9) then
+			maxSliderButton.AnchorPoint = Vector2.new(0.5, 0.5);
+			maxButtonCorner = Instance.new("UICorner");
+			maxButtonCorner.CornerRadius = UDim.new(0, 5);
+			maxButtonCorner.Parent = maxSliderButton;
+			draggingMin = false;
+			draggingMax = false;
+			FlatIdent_912A7 = 10;
+		end
+		if (8 == FlatIdent_912A7) then
+			maxSliderButton.Name = "MaxSliderButton";
+			maxSliderButton.Parent = sliderBar;
+			maxSliderButton.BackgroundColor3 = self.theme.accent;
+			maxSliderButton.BorderSizePixel = 0;
+			maxSliderButton.Size = UDim2.new(0, 10, 0, 10);
+			maxSliderButton.Position = UDim2.new((defaultMax - min) / (max - min), -0.5, 0.5, 0);
+			FlatIdent_912A7 = 9;
+		end
+		if (3 == FlatIdent_912A7) then
+			rangeValueLabel = Instance.new("TextLabel");
+			rangeValueLabel.Name = "RangeValue";
+			rangeValueLabel.Parent = slider;
+			rangeValueLabel.BackgroundTransparency = 1;
+			rangeValueLabel.Position = UDim2.new(1, -60, 0, 0);
+			rangeValueLabel.Size = UDim2.new(0, 60, 0, 20);
+			FlatIdent_912A7 = 4;
+		end
+		if (FlatIdent_912A7 == 1) then
+			slider.BackgroundTransparency = 1;
+			slider.Size = UDim2.new(1, -10, 0, 40);
+			title = Instance.new("TextLabel");
+			title.Name = "Title";
+			title.Parent = slider;
+			title.BackgroundTransparency = 1;
+			FlatIdent_912A7 = 2;
+		end
+	end
+end;
+library.CreateToggle = function(self, item, name, callback, ConfigToggle)
+	local FlatIdent_65194 = 0;
+	local SettingsArea;
+	local parent;
+	local toggle;
+	local title;
+	local toggleButton;
+	local toggleCorner;
+	local toggleInner;
+	local toggleInnerCorner;
+	local toggled;
+	while true do
+		if (FlatIdent_65194 == 7) then
+			toggleInnerCorner = Instance.new("UICorner");
+			toggleInnerCorner.CornerRadius = UDim.new(0, 4);
+			toggleInnerCorner.Parent = toggleInner;
+			toggled = ConfigToggle or false;
+			if toggled then
+				toggleInner.Size = UDim2.new(1, -4, 1, -4);
+			else
+				toggleInner.Size = UDim2.new(0, 0, 0, 0);
+			end
+			FlatIdent_65194 = 8;
+		end
+		if (FlatIdent_65194 == 0) then
+			SettingsArea = item.Parent:FindFirstChild("SettingsArea_" .. item.Name);
+			parent = SettingsArea:FindFirstChild("SettingsPanel");
+			toggle = Instance.new("Frame");
+			toggle.Name = name;
+			toggle.Parent = parent;
+			FlatIdent_65194 = 1;
+		end
+		if (FlatIdent_65194 == 5) then
+			toggleCorner = Instance.new("UICorner");
+			toggleCorner.CornerRadius = UDim.new(0, 4);
+			toggleCorner.Parent = toggleButton;
+			toggleInner = Instance.new("Frame");
+			toggleInner.Name = "ToggleInner";
+			FlatIdent_65194 = 6;
+		end
+		if (3 == FlatIdent_65194) then
+			title.TextSize = 12;
+			title.TextXAlignment = Enum.TextXAlignment.Left;
+			toggleButton = Instance.new("TextButton");
+			toggleButton.Name = "ToggleButton";
+			toggleButton.Parent = toggle;
+			FlatIdent_65194 = 4;
+		end
+		if (FlatIdent_65194 == 2) then
+			title.BackgroundTransparency = 1;
+			title.Size = UDim2.new(1, -30, 1, 0);
+			title.Font = Enum.Font.Gotham;
+			title.Text = name;
+			title.TextColor3 = self.theme.foreground;
+			FlatIdent_65194 = 3;
+		end
+		if (FlatIdent_65194 == 8) then
+			toggleButton.MouseButton1Click:Connect(function()
+				toggled = not toggled;
+				if toggled then
+					CreateTween(toggleInner, {Size=UDim2.new(1, -4, 1, -4)}, 0.2):Play();
+				else
+					CreateTween(toggleInner, {Size=UDim2.new(0, 0, 0, 0)}, 0.2):Play();
+				end
+				if callback then
+					callback(toggled);
+				end
+			end);
+			if ConfigToggle then
+				callback(ConfigToggle);
+			end
+			break;
+		end
+		if (FlatIdent_65194 == 1) then
+			toggle.BackgroundTransparency = 1;
+			toggle.Size = UDim2.new(1, -10, 0, 25);
+			title = Instance.new("TextLabel");
+			title.Name = "Title";
+			title.Parent = toggle;
+			FlatIdent_65194 = 2;
+		end
+		if (4 == FlatIdent_65194) then
+			toggleButton.BackgroundColor3 = self.theme.muted;
+			toggleButton.BorderSizePixel = 0;
+			toggleButton.Position = UDim2.new(1, -25, 0.5, -10);
+			toggleButton.Size = UDim2.new(0, 20, 0, 20);
+			toggleButton.Text = "";
+			FlatIdent_65194 = 5;
+		end
+		if (FlatIdent_65194 == 6) then
+			toggleInner.Parent = toggleButton;
+			toggleInner.AnchorPoint = Vector2.new(0.5, 0.5);
+			toggleInner.BackgroundColor3 = self.theme.accent;
+			toggleInner.BorderSizePixel = 0;
+			toggleInner.Position = UDim2.new(0.5, 0, 0.5, 0);
+			FlatIdent_65194 = 7;
+		end
+	end
+end;
+library.CreateDropdown = function(self, item, name, options, callback, ConfigOption)
+	local SettingsArea = item.Parent:FindFirstChild("SettingsArea_" .. item.Name);
+	local parent = SettingsArea:FindFirstChild("SettingsPanel");
+	local container = Instance.new("Frame");
+	container.Name = name .. "Container";
+	container.Parent = parent;
+	container.BackgroundTransparency = 1;
+	container.Size = UDim2.new(1, 0, 0, 52);
+	container.ClipsDescendants = true;
+	local layout = Instance.new("UIListLayout");
+	layout.Parent = container;
+	layout.SortOrder = Enum.SortOrder.LayoutOrder;
+	layout.Padding = UDim.new(0, 2);
+	local dropdownLabel = Instance.new("TextLabel");
+	dropdownLabel.Name = "DropdownLabel";
+	dropdownLabel.Parent = container;
+	dropdownLabel.BackgroundTransparency = 1;
+	dropdownLabel.Size = UDim2.new(1, 0, 0, 25);
+	dropdownLabel.Font = Enum.Font.Gotham;
+	dropdownLabel.Text = name;
+	dropdownLabel.TextColor3 = self.theme.foreground;
+	dropdownLabel.TextSize = 12;
+	dropdownLabel.TextXAlignment = Enum.TextXAlignment.Left;
+	local labelPadding = Instance.new("UIPadding");
+	labelPadding.Parent = dropdownLabel;
+	labelPadding.PaddingLeft = UDim.new(0, 5);
+	local dropdownButton = Instance.new("TextButton");
+	dropdownButton.Name = "DropdownButton";
+	dropdownButton.Parent = container;
+	dropdownButton.BackgroundColor3 = self.theme.muted;
+	dropdownButton.BorderSizePixel = 0;
+	dropdownButton.Size = UDim2.new(1, 0, 0, 25);
+	dropdownButton.Font = Enum.Font.Gotham;
+	dropdownButton.Text = options[1];
+	dropdownButton.TextColor3 = self.theme.foreground;
+	dropdownButton.TextSize = 12;
+	dropdownButton.TextXAlignment = Enum.TextXAlignment.Left;
+	if ConfigOption then
+		dropdownButton.Text = ConfigOption;
+	end
+	local dropdownPadding = Instance.new("UIPadding");
+	dropdownPadding.Parent = dropdownButton;
+	dropdownPadding.PaddingLeft = UDim.new(0, 5);
+	local dropdownCorner = Instance.new("UICorner");
+	dropdownCorner.CornerRadius = UDim.new(0, 4);
+	dropdownCorner.Parent = dropdownButton;
+	local dropdownList = Instance.new("Frame");
+	dropdownList.Name = "DropdownList";
+	dropdownList.Parent = container;
+	dropdownList.BackgroundColor3 = self.theme.windowBackground;
+	dropdownList.BorderSizePixel = 0;
+	dropdownList.Size = UDim2.new(1, 0, 0, #options * 25);
+	dropdownList.Visible = false;
+	local listLayout = Instance.new("UIListLayout");
+	listLayout.Parent = dropdownList;
+	listLayout.SortOrder = Enum.SortOrder.LayoutOrder;
+	for i, option in ipairs(options) do
+		local FlatIdent_14124 = 0;
+		local optionButton;
+		local optionPadding;
+		while true do
+			if (FlatIdent_14124 == 3) then
+				optionPadding.PaddingLeft = UDim.new(0, 5);
+				optionButton.MouseButton1Click:Connect(function()
+					local FlatIdent_11AA1 = 0;
+					while true do
+						if (1 == FlatIdent_11AA1) then
+							container.Size = UDim2.new(1, 0, 0, 52);
+							if callback then
+								callback(option);
+							end
+							break;
+						end
+						if (FlatIdent_11AA1 == 0) then
+							dropdownButton.Text = option;
+							dropdownList.Visible = false;
+							FlatIdent_11AA1 = 1;
+						end
+					end
+				end);
+				break;
+			end
+			if (FlatIdent_14124 == 2) then
+				optionButton.TextSize = 12;
+				optionButton.TextXAlignment = Enum.TextXAlignment.Left;
+				optionPadding = Instance.new("UIPadding");
+				optionPadding.Parent = optionButton;
+				FlatIdent_14124 = 3;
+			end
+			if (FlatIdent_14124 == 0) then
+				optionButton = Instance.new("TextButton");
+				optionButton.Name = option;
+				optionButton.Parent = dropdownList;
+				optionButton.BackgroundTransparency = 1;
+				FlatIdent_14124 = 1;
+			end
+			if (FlatIdent_14124 == 1) then
+				optionButton.Size = UDim2.new(1, 0, 0, 25);
+				optionButton.Font = Enum.Font.Gotham;
+				optionButton.Text = option;
+				optionButton.TextColor3 = self.theme.foreground;
+				FlatIdent_14124 = 2;
+			end
+		end
+	end
+	dropdownButton.MouseButton1Click:Connect(function()
+		local FlatIdent_3501F = 0;
+		while true do
+			if (0 == FlatIdent_3501F) then
+				dropdownList.Visible = not dropdownList.Visible;
+				if dropdownList.Visible then
+					container.Size = UDim2.new(1, 0, 0, 52 + (#options * 25) + 2);
+				else
+					container.Size = UDim2.new(1, 0, 0, 52);
+				end
+				break;
+			end
+		end
+	end);
+	spawn(function()
+		if ConfigOption then
+			callback(ConfigOption);
+		end
+	end);
+end;
+library.CreateTextbox = function(self, item, name, defaultText, callback)
+	local SettingsArea = item.Parent:FindFirstChild("SettingsArea_" .. item.Name);
+	local parent = SettingsArea:FindFirstChild("SettingsPanel");
+	local container = Instance.new("Frame");
+	container.Name = name .. "Container";
+	container.Parent = parent;
+	container.BackgroundTransparency = 1;
+	container.Size = UDim2.new(1, 0, 0, 52);
+	container.ClipsDescendants = true;
+	local layout = Instance.new("UIListLayout");
+	layout.Parent = container;
+	layout.SortOrder = Enum.SortOrder.LayoutOrder;
+	layout.Padding = UDim.new(0, 2);
+	local label = Instance.new("TextLabel");
+	label.Name = "TextboxLabel";
+	label.Parent = container;
+	label.BackgroundTransparency = 1;
+	label.Size = UDim2.new(1, 0, 0, 25);
+	label.Font = Enum.Font.Gotham;
+	label.Text = name;
+	label.TextColor3 = self.theme.foreground;
+	label.TextSize = 12;
+	label.TextXAlignment = Enum.TextXAlignment.Left;
+	local labelPadding = Instance.new("UIPadding");
+	labelPadding.Parent = label;
+	labelPadding.PaddingLeft = UDim.new(0, 5);
+	local textbox = Instance.new("TextBox");
+	textbox.Name = "Textbox";
+	textbox.Parent = container;
+	textbox.BackgroundColor3 = self.theme.muted;
+	textbox.BorderSizePixel = 0;
+	textbox.Size = UDim2.new(1, 0, 0, 25);
+	textbox.Font = Enum.Font.Gotham;
+	textbox.Text = defaultText or "";
+	textbox.TextColor3 = self.theme.foreground;
+	textbox.TextSize = 12;
+	textbox.ClearTextOnFocus = false;
+	textbox.TextXAlignment = Enum.TextXAlignment.Left;
+	local textboxPadding = Instance.new("UIPadding");
+	textboxPadding.Parent = textbox;
+	textboxPadding.PaddingLeft = UDim.new(0, 5);
+	local textboxCorner = Instance.new("UICorner");
+	textboxCorner.CornerRadius = UDim.new(0, 4);
+	textboxCorner.Parent = textbox;
+	textbox.FocusLost:Connect(function(enterPressed)
+		if callback then
+			callback(textbox.Text);
+		end
+	end);
+end;
+library.CreateButton = function(self, item, name, callback)
+	local FlatIdent_15F29 = 0;
+	local SettingsArea;
+	local parent;
+	local container;
+	local layout;
+	local labelPadding;
+	local button;
+	local buttonPadding;
+	local buttonCorner;
+	while true do
+		if (0 == FlatIdent_15F29) then
+			SettingsArea = item.Parent:FindFirstChild("SettingsArea_" .. item.Name);
+			parent = SettingsArea:FindFirstChild("SettingsPanel");
+			container = Instance.new("Frame");
+			container.Name = name .. "Container";
+			container.Parent = parent;
+			container.BackgroundTransparency = 1;
+			FlatIdent_15F29 = 1;
+		end
+		if (FlatIdent_15F29 == 1) then
+			container.Size = UDim2.new(1, 0, 0, 52);
+			container.ClipsDescendants = true;
+			layout = Instance.new("UIListLayout");
+			layout.Parent = container;
+			layout.SortOrder = Enum.SortOrder.LayoutOrder;
+			layout.Padding = UDim.new(0, 2);
+			FlatIdent_15F29 = 2;
+		end
+		if (FlatIdent_15F29 == 5) then
+			buttonCorner = Instance.new("UICorner");
+			buttonCorner.CornerRadius = UDim.new(0, 4);
+			buttonCorner.Parent = button;
+			button.MouseButton1Click:Connect(function()
+				if callback then
+					callback();
+				end
+			end);
+			break;
+		end
+		if (FlatIdent_15F29 == 2) then
+			labelPadding = Instance.new("UIPadding");
+			labelPadding.Parent = label;
+			labelPadding.PaddingLeft = UDim.new(0, 5);
+			button = Instance.new("TextButton");
+			button.Name = "Button";
+			button.Parent = container;
+			FlatIdent_15F29 = 3;
+		end
+		if (4 == FlatIdent_15F29) then
+			button.TextSize = 12;
+			button.TextXAlignment = Enum.TextXAlignment.Center;
+			buttonPadding = Instance.new("UIPadding");
+			buttonPadding.Parent = button;
+			buttonPadding.PaddingLeft = UDim.new(0, 5);
+			buttonPadding.PaddingRight = UDim.new(0, 5);
+			FlatIdent_15F29 = 5;
+		end
+		if (3 == FlatIdent_15F29) then
+			button.BackgroundColor3 = self.theme.accent;
+			button.BorderSizePixel = 0;
+			button.Size = UDim2.new(1, 0, 0, 25);
+			button.Font = Enum.Font.Gotham;
+			button.Text = name;
+			button.TextColor3 = self.theme.foreground;
+			FlatIdent_15F29 = 4;
+		end
+	end
+end;
+library.CreateDynamicDropdown = function(self, item, name, optionsFunction, callback)
+	local FlatIdent_6B9E2 = 0;
+	local SettingsArea;
+	local parent;
+	local container;
+	local layout;
+	local dropdownLabel;
+	local labelPadding;
+	local dropdownButton;
+	local buttonPadding;
+	local dropdownCorner;
+	local dropdownList;
+	local listLayout;
+	local refreshOptions;
+	while true do
+		if (FlatIdent_6B9E2 == 1) then
+			container.Size = UDim2.new(1, 0, 0, 52);
+			container.ClipsDescendants = true;
+			layout = Instance.new("UIListLayout");
+			layout.Parent = container;
+			layout.SortOrder = Enum.SortOrder.LayoutOrder;
+			layout.Padding = UDim.new(0, 2);
+			FlatIdent_6B9E2 = 2;
+		end
+		if (FlatIdent_6B9E2 == 8) then
+			listLayout = Instance.new("UIListLayout");
+			listLayout.Parent = dropdownList;
+			listLayout.SortOrder = Enum.SortOrder.LayoutOrder;
+			refreshOptions = nil;
+			function refreshOptions()
+				local FlatIdent_340E5 = 0;
+				local options;
+				while true do
+					if (FlatIdent_340E5 == 1) then
+						dropdownList.Size = UDim2.new(1, 0, 0, #options * 25);
+						for i, option in ipairs(options) do
+							local optionButton = Instance.new("TextButton");
+							optionButton.Name = tostring(option);
+							optionButton.Parent = dropdownList;
+							optionButton.BackgroundTransparency = 1;
+							optionButton.Size = UDim2.new(1, 0, 0, 25);
+							optionButton.Font = Enum.Font.Gotham;
+							optionButton.Text = tostring(option);
+							optionButton.TextColor3 = self.theme.foreground;
+							optionButton.TextSize = 12;
+							optionButton.TextXAlignment = Enum.TextXAlignment.Left;
+							local optionPadding = Instance.new("UIPadding");
+							optionPadding.Parent = optionButton;
+							optionPadding.PaddingLeft = UDim.new(0, 5);
+							optionButton.MouseButton1Click:Connect(function()
+								dropdownButton.Text = tostring(option);
+								dropdownList.Visible = false;
+								container.Size = UDim2.new(1, 0, 0, 52);
+								if callback then
+									callback(option);
+								end
+							end);
+						end
+						break;
+					end
+					if (FlatIdent_340E5 == 0) then
+						for _, child in ipairs(dropdownList:GetChildren()) do
+							if child:IsA("TextButton") then
+								child:Destroy();
+							end
+						end
+						options = optionsFunction();
+						FlatIdent_340E5 = 1;
+					end
+				end
+			end
+			dropdownButton.MouseButton1Click:Connect(function()
+				dropdownList.Visible = not dropdownList.Visible;
+				if dropdownList.Visible then
+					local FlatIdent_6E23 = 0;
+					while true do
+						if (FlatIdent_6E23 == 0) then
+							refreshOptions();
+							container.Size = UDim2.new(1, 0, 0, 52 + (#optionsFunction() * 25) + 2);
+							break;
+						end
+					end
+				else
+					container.Size = UDim2.new(1, 0, 0, 52);
+				end
+			end);
+			break;
+		end
+		if (FlatIdent_6B9E2 == 6) then
+			buttonPadding = Instance.new("UIPadding");
+			buttonPadding.Parent = dropdownButton;
+			buttonPadding.PaddingLeft = UDim.new(0, 5);
+			dropdownCorner = Instance.new("UICorner");
+			dropdownCorner.CornerRadius = UDim.new(0, 4);
+			dropdownCorner.Parent = dropdownButton;
+			FlatIdent_6B9E2 = 7;
+		end
+		if (FlatIdent_6B9E2 == 0) then
+			SettingsArea = item.Parent:FindFirstChild("SettingsArea_" .. item.Name);
+			parent = SettingsArea:FindFirstChild("SettingsPanel");
+			container = Instance.new("Frame");
+			container.Name = name .. "DynamicDropdownContainer";
+			container.Parent = parent;
+			container.BackgroundTransparency = 1;
+			FlatIdent_6B9E2 = 1;
+		end
+		if (FlatIdent_6B9E2 == 4) then
+			labelPadding.PaddingLeft = UDim.new(0, 5);
+			dropdownButton = Instance.new("TextButton");
+			dropdownButton.Name = "DropdownButton";
+			dropdownButton.Parent = container;
+			dropdownButton.BackgroundColor3 = self.theme.muted;
+			dropdownButton.BorderSizePixel = 0;
+			FlatIdent_6B9E2 = 5;
+		end
+		if (7 == FlatIdent_6B9E2) then
+			dropdownList = Instance.new("Frame");
+			dropdownList.Name = "DropdownList";
+			dropdownList.Parent = container;
+			dropdownList.BackgroundColor3 = self.theme.windowBackground;
+			dropdownList.BorderSizePixel = 0;
+			dropdownList.Visible = false;
+			FlatIdent_6B9E2 = 8;
+		end
+		if (FlatIdent_6B9E2 == 5) then
+			dropdownButton.Size = UDim2.new(1, 0, 0, 25);
+			dropdownButton.Font = Enum.Font.Gotham;
+			dropdownButton.Text = "Select Option";
+			dropdownButton.TextColor3 = self.theme.foreground;
+			dropdownButton.TextSize = 12;
+			dropdownButton.TextXAlignment = Enum.TextXAlignment.Left;
+			FlatIdent_6B9E2 = 6;
+		end
+		if (FlatIdent_6B9E2 == 3) then
+			dropdownLabel.Text = name;
+			dropdownLabel.TextColor3 = self.theme.foreground;
+			dropdownLabel.TextSize = 12;
+			dropdownLabel.TextXAlignment = Enum.TextXAlignment.Left;
+			labelPadding = Instance.new("UIPadding");
+			labelPadding.Parent = dropdownLabel;
+			FlatIdent_6B9E2 = 4;
+		end
+		if (FlatIdent_6B9E2 == 2) then
+			dropdownLabel = Instance.new("TextLabel");
+			dropdownLabel.Name = "DropdownLabel";
+			dropdownLabel.Parent = container;
+			dropdownLabel.BackgroundTransparency = 1;
+			dropdownLabel.Size = UDim2.new(1, 0, 0, 25);
+			dropdownLabel.Font = Enum.Font.Gotham;
+			FlatIdent_6B9E2 = 3;
+		end
+	end
+end;
+ScreenGui:GetPropertyChangedSignal("AbsoluteSize"):Connect(function()
+	WindowManager.windowOffset = 0;
+	for window, _ in pairs(WindowManager.windows) do
+		if not window:IsDescendantOf(ScreenGui) then
+			WindowManager.windows[window] = nil;
+		elseif not window:GetAttribute("Fixed") then
+			local FlatIdent_43E8E = 0;
+			local defaultWidth;
+			local defaultHeight;
+			local offset;
+			local screenWidth;
+			local screenHeight;
+			local windowX;
+			local windowY;
+			while true do
+				if (3 == FlatIdent_43E8E) then
+					windowX = math.clamp(windowX, WINDOW_PADDING, (screenWidth - defaultWidth) - WINDOW_PADDING);
+					windowY = math.clamp(windowY, WINDOW_PADDING, (screenHeight - defaultHeight) - WINDOW_PADDING);
+					FlatIdent_43E8E = 4;
+				end
+				if (FlatIdent_43E8E == 4) then
+					window.Position = UDim2.new(0, windowX, 0, windowY);
+					WindowManager.windowOffset = offset + 20;
+					break;
+				end
+				if (FlatIdent_43E8E == 0) then
+					defaultWidth = window.Size.X.Offset;
+					defaultHeight = window.Size.Y.Offset;
+					FlatIdent_43E8E = 1;
+				end
+				if (FlatIdent_43E8E == 1) then
+					offset = WindowManager.windowOffset;
+					screenWidth, screenHeight = ScreenGui.AbsoluteSize.X, ScreenGui.AbsoluteSize.Y;
+					FlatIdent_43E8E = 2;
+				end
+				if (2 == FlatIdent_43E8E) then
+					windowX = ((screenWidth - defaultWidth) / 2) + offset;
+					windowY = ((screenHeight - defaultHeight) / 2) + offset;
+					FlatIdent_43E8E = 3;
+				end
+			end
+		end
+	end
+end);
+library.mainWindow = library:CreateWindow("VAPA v3", true, 220, 300);
+library.mainWindow.Window.Position = UDim2.new(0, 10, 0, 10);
+library.AddWindowToggle = function(self, windowInstance)
+	local FlatIdent_87C42 = 0;
+	local item;
+	while true do
+		if (0 == FlatIdent_87C42) then
+			item = library:CreateItem(library.mainWindow.Content, windowInstance.Window.Name, false, function(state)
+				windowInstance.Window.Visible = state;
+			end, false, true);
+			return item;
+		end
+	end
+end;
+local Players = game:GetService("Players");
+local TweenService = game:GetService("TweenService");
+local RunService = game:GetService("RunService");
+local Lighting = game:GetService("Lighting");
+local LocalPlayer = Players.LocalPlayer;
+local Camera = workspace.CurrentCamera;
+local UserInputService = game:GetService("UserInputService");
+local Mouse = LocalPlayer:GetMouse();
+local settings = {AimAssist=false,AimAssist_SmoothSpeed=0.1,AimAssist_WallCheck=false,AimAssist_TeamCheck=false,AimAssist_Mode="None",ESP=false,ESP_style="2D",ESP_Thickness=2,ESP_Health=false,ESP_TeamColor=false,ESP_updateInterval=0.01,Tracers=false,Tracers_TeamColor=false,Tracers_Thickness=1,NameTag=false,NameTag_Size=16,NameTag_Distance=false,NameTag_TeamColor=false,Custom_FOV=false,Custom_FOV_Size=70,FOV=false,FOV_Size=1,Fullbright=false,Fullbright_Level=1,Glow=false,Trajectories=false,Trajectories_Lifetime=0.6,Trajectories_MinLength=0.1,Trajectories_MaxLength=20,Trajectories_Width=1,Trajectories_MinSpeed=0.5,ChinaHat=false,ChinaHat_Transparency=0.6,ChainHat_glowIntensity=0.4,ChainHat_Color=Color3.fromRGB(255, 255, 255),ChainHat_RGB=false,ChinaHat_colorChangeSpeed=0.002,ChinaHat_verticalOffset=1.2,CustomCrosshair=false,CustomCrosshair_Color=Color3.fromRGB(255, 255, 255),CustomCrosshair_Thickness=2,CustomCrosshair_Length=10,CustomCrosshair_Gap=5,CustomCrosshair_Dot=true,CustomCrosshair_DotSize=2,JumpWave=false,JumpWave_Size=1,JumpWave_Duration=1,TPAura=false,TPAura_Interval=0.01,TPAura_Duration=2,TPAura_Distance=3,TPAura_TeamCheck=false,TPAura_Range=false,TPAura_RangeX=100,TPAura_RangeY=100,Noclip=false,AirStep=false,Fly=false,Fly_Speed=50,WalkSpeed=false,WalkSpeed_Speed=16,WalkSpeed_Mode="None",HightJump=false,HightJump_Power=50,Gravity=false,Gravity_Value=70,AutoWalk=false,AutoWalk_Speed=1};
+local LocalConfig = {defaultAmbientLight=Lighting.Ambient,defaultFOV=Camera.FieldOfView,defaultOutdoorAmbientLight=Lighting.OutdoorAmbient,Gravity_DefaultValue=game.Workspace.Gravity,LastConfig="default"};
+if isfile("VapaV3/DefaultConfig.json") then
+	local FlatIdent_437D4 = 0;
+	local ConfigFile;
+	local Config;
+	local json;
+	while true do
+		if (FlatIdent_437D4 == 1) then
+			json = game:GetService("HttpService"):JSONDecode(Config);
+			settings = json;
+			break;
+		end
+		if (FlatIdent_437D4 == 0) then
+			ConfigFile = readfile("VapaV3/DefaultConfig.json");
+			Config = readfile("VapaV3/Configs/" .. ConfigFile);
+			FlatIdent_437D4 = 1;
+		end
+	end
+end
+local CombatWindow = library:CreateWindow("Combat", false, 220, 350);
+local VisualsWindow = library:CreateWindow("Visuals", false, 220, 350);
+local PlayerWindow = library:CreateWindow("Player", false, 220, 350);
+local MoventWindow = library:CreateWindow("Movent", false, 220, 350);
+local MiscWindow = library:CreateWindow("Misc", false, 220, 350);
+library:AddWindowToggle(CombatWindow);
+library:AddWindowToggle(VisualsWindow);
+library:AddWindowToggle(PlayerWindow);
+library:AddWindowToggle(MoventWindow);
+library:AddWindowToggle(MiscWindow);
+local tracking = false;
+local function getNearestPlayerToMouse()
+	local nearestPlayer = nil;
+	local shortestDistance = math.huge;
+	for _, otherPlayer in pairs(Players:GetPlayers()) do
+		if ((otherPlayer ~= LocalPlayer) and otherPlayer.Character and otherPlayer.Character:FindFirstChild("Head")) then
+			local headPart = otherPlayer.Character.Head;
+			local screenPos, onScreen = Camera:WorldToViewportPoint(headPart.Position);
+			if onScreen then
+				local mousePos = Vector2.new(Mouse.X, Mouse.Y);
+				local distance = (mousePos - Vector2.new(screenPos.X, screenPos.Y)).magnitude;
+				if (distance < shortestDistance) then
+					shortestDistance = distance;
+					nearestPlayer = otherPlayer;
+				end
+			end
+		end
+	end
+	return nearestPlayer;
+end
+local function isVisible(targetPlayer)
+	local FlatIdent_280F1 = 0;
+	local character;
+	local aimPart;
+	local origin;
+	local direction;
+	local raycastParams;
+	local result;
+	while true do
+		if (FlatIdent_280F1 == 1) then
+			if not aimPart then
+				return false;
+			end
+			origin = Camera.CFrame.Position;
+			direction = (aimPart.Position - origin).Unit * 500;
+			FlatIdent_280F1 = 2;
+		end
+		if (4 == FlatIdent_280F1) then
+			return true;
+		end
+		if (FlatIdent_280F1 == 2) then
+			raycastParams = RaycastParams.new();
+			raycastParams.FilterDescendantsInstances = {LocalPlayer.Character};
+			raycastParams.FilterType = Enum.RaycastFilterType.Blacklist;
+			FlatIdent_280F1 = 3;
+		end
+		if (FlatIdent_280F1 == 3) then
+			raycastParams.IgnoreWater = true;
+			result = workspace:Raycast(origin, direction, raycastParams);
+			if result then
+				if result.Instance:IsDescendantOf(character) then
+					return true;
+				else
+					return false;
+				end
+			end
+			FlatIdent_280F1 = 4;
+		end
+		if (FlatIdent_280F1 == 0) then
+			character = targetPlayer.Character;
+			if (not character or not character:FindFirstChild("HumanoidRootPart")) then
+				return false;
+			end
+			aimPart = character:FindFirstChild("Head");
+			FlatIdent_280F1 = 1;
+		end
+	end
+end
+local function updateCamera()
+	if tracking then
+		local targetPlayer = getNearestPlayerToMouse();
+		if (targetPlayer and targetPlayer.Character and targetPlayer.Character:FindFirstChild("Head")) then
+			local FlatIdent_480B4 = 0;
+			local targetPos;
+			local currentCFrame;
+			while true do
+				if (1 == FlatIdent_480B4) then
+					targetPos = targetPlayer.Character.Head.Position;
+					currentCFrame = Camera.CFrame;
+					FlatIdent_480B4 = 2;
+				end
+				if (FlatIdent_480B4 == 2) then
+					if (settings.AimAssist_Mode == "None") then
+						local targetCFrame = CFrame.new(currentCFrame.Position, targetPos);
+						Camera.CFrame = currentCFrame:Lerp(targetCFrame, settings.AimAssist_SmoothSpeed);
+					elseif (settings.AimAssist_Mode == "SnapBack") then
+						local FlatIdent_2D7B8 = 0;
+						local originalCFrame;
+						local targetCFrame;
+						while true do
+							if (FlatIdent_2D7B8 == 1) then
+								Camera.CFrame = targetCFrame;
+								wait(0.005);
+								FlatIdent_2D7B8 = 2;
+							end
+							if (2 == FlatIdent_2D7B8) then
+								Camera.CFrame = originalCFrame;
+								break;
+							end
+							if (0 == FlatIdent_2D7B8) then
+								originalCFrame = currentCFrame;
+								targetCFrame = CFrame.new(currentCFrame.Position, targetPos);
+								FlatIdent_2D7B8 = 1;
+							end
+						end
+					elseif (settings.AimAssist_Mode == "Lock-On") then
+						local FlatIdent_62CB4 = 0;
+						local targetCFrame;
+						local hrp;
+						while true do
+							if (FlatIdent_62CB4 == 0) then
+								targetCFrame = CFrame.new(currentCFrame.Position, targetPos);
+								Camera.CFrame = currentCFrame:Lerp(targetCFrame, settings.AimAssist_SmoothSpeed);
+								FlatIdent_62CB4 = 1;
+							end
+							if (1 == FlatIdent_62CB4) then
+								hrp = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart");
+								if hrp then
+									local FlatIdent_4E1DE = 0;
+									local currentPos;
+									local targetLookAt;
+									while true do
+										if (0 == FlatIdent_4E1DE) then
+											currentPos = hrp.Position;
+											targetLookAt = Vector3.new(targetPos.X, currentPos.Y, targetPos.Z);
+											FlatIdent_4E1DE = 1;
+										end
+										if (FlatIdent_4E1DE == 1) then
+											hrp.CFrame = CFrame.new(currentPos, targetLookAt);
+											break;
+										end
+									end
+								end
+								break;
+							end
+						end
+					elseif (settings.AimAssist_Mode == "ForceAim") then
+						local FlatIdent_3C1AA = 0;
+						local originalCFrame;
+						local targetCFrame;
+						local hrp;
+						while true do
+							if (3 == FlatIdent_3C1AA) then
+								if hrp then
+									local FlatIdent_1BD19 = 0;
+									local currentPos;
+									local targetLookAt;
+									while true do
+										if (FlatIdent_1BD19 == 0) then
+											currentPos = hrp.Position;
+											targetLookAt = Vector3.new(targetPos.X, currentPos.Y, targetPos.Z);
+											FlatIdent_1BD19 = 1;
+										end
+										if (FlatIdent_1BD19 == 1) then
+											hrp.CFrame = CFrame.new(currentPos, targetLookAt);
+											break;
+										end
+									end
+								end
+								break;
+							end
+							if (FlatIdent_3C1AA == 0) then
+								originalCFrame = currentCFrame;
+								targetCFrame = CFrame.new(currentCFrame.Position, targetPos);
+								FlatIdent_3C1AA = 1;
+							end
+							if (FlatIdent_3C1AA == 2) then
+								Camera.CFrame = originalCFrame;
+								hrp = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart");
+								FlatIdent_3C1AA = 3;
+							end
+							if (FlatIdent_3C1AA == 1) then
+								Camera.CFrame = targetCFrame;
+								wait(0.005);
+								FlatIdent_3C1AA = 2;
+							end
+						end
+					end
+					break;
+				end
+				if (FlatIdent_480B4 == 0) then
+					if (settings.AimAssist_TeamCheck and (targetPlayer.Team == LocalPlayer.Team)) then
+						return;
+					end
+					if (settings.AimAssist_WallCheck and not isVisible(targetPlayer)) then
+						return;
+					end
+					FlatIdent_480B4 = 1;
+				end
+			end
+		end
+	end
+end
+UserInputService.InputBegan:Connect(function(input, gameProcessed)
+	local FlatIdent_4CEEC = 0;
+	while true do
+		if (FlatIdent_4CEEC == 0) then
+			if gameProcessed then
+				return;
+			end
+			if (input.UserInputType == Enum.UserInputType.MouseButton2) then
+				tracking = true;
+			end
+			break;
+		end
+	end
+end);
+UserInputService.InputEnded:Connect(function(input, gameProcessed)
+	if (input.UserInputType == Enum.UserInputType.MouseButton2) then
+		tracking = false;
+	end
+end);
+local AimAssist_Item = library:CreateItem(CombatWindow.Content, "AimAssist", true, function(toggled)
+	settings.AimAssist = toggled;
+	while settings.AimAssist do
+		local FlatIdent_67408 = 0;
+		while true do
+			if (FlatIdent_67408 == 0) then
+				task.wait(0.01);
+				updateCamera();
+				break;
+			end
+		end
+	end
+end, settings.AimAssist);
+local AimAssistWallCheck = library:CreateToggle(AimAssist_Item, "Wall Check", function(toggled)
+	settings.AimAssist_WallCheck = toggled;
+end, settings.AimAssist_WallCheck);
+local AimAssistTeamCheck = library:CreateToggle(AimAssist_Item, "Team Check", function(toggled)
+	settings.AimAssist_TeamCheck = toggled;
+end, settings.AimAssist_TeamCheck);
+local AimAssistSmouth_Slider = library:CreateSlider(AimAssist_Item, "Smouth Speed", 1, 100, 10, function(Speed)
+	settings.AimAssist_SmoothSpeed = Speed * 0.01;
+end, settings.AimAssist_SmoothSpeed / 0.01);
+local AimAssistMode_DownDrop = library:CreateDropdown(AimAssist_Item, "Mode", {"None","SnapBack","Lock-On","ForceAim"}, function(Mode)
+	settings.AimAssist_Mode = Mode;
+end);
+local TPAura_Item = library:CreateItem(CombatWindow.Content, "TPAura", true, function(toggled)
+	settings.TPAura = toggled;
+	while settings.TPAura do
+		local FlatIdent_904EC = 0;
+		local getRandomPlayer;
+		local getRandomPlayerInRange;
+		local TargetPlayer;
+		while true do
+			if (FlatIdent_904EC == 1) then
+				function getRandomPlayer()
+					local playerList = {};
+					for _, player in ipairs(Players:GetPlayers()) do
+						if ((player ~= LocalPlayer) and player.Character and player.Character:FindFirstChild("HumanoidRootPart")) then
+							table.insert(playerList, player);
+						end
+					end
+					if (#playerList > 0) then
+						return playerList[math.random(1, #playerList)];
+					end
+					return nil;
+				end
+				getRandomPlayerInRange = nil;
+				FlatIdent_904EC = 2;
+			end
+			if (FlatIdent_904EC == 3) then
+				if settings.TPAura_Range then
+					TargetPlayer = getRandomPlayerInRange();
+				else
+					TargetPlayer = getRandomPlayer();
+				end
+				if TargetPlayer then
+					local FlatIdent_70C30 = 0;
+					local connection;
+					while true do
+						if (FlatIdent_70C30 == 2) then
+							connection:Disconnect();
+							break;
+						end
+						if (FlatIdent_70C30 == 0) then
+							if (settings.TPAura_TeamCheck and (LocalPlayer.Team == TargetPlayer.Team)) then
+								return;
+							end
+							connection = nil;
+							FlatIdent_70C30 = 1;
+						end
+						if (FlatIdent_70C30 == 1) then
+							connection = RunService.RenderStepped:Connect(function()
+								if (TargetPlayer.Character and TargetPlayer.Character:FindFirstChild("HumanoidRootPart")) then
+									local FlatIdent_44652 = 0;
+									local targetHRP;
+									local backOffset;
+									local newCFrame;
+									while true do
+										if (FlatIdent_44652 == 1) then
+											newCFrame = CFrame.new(targetHRP.Position + backOffset) * CFrame.Angles(0, targetHRP.Orientation.Y, 0);
+											if (LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")) then
+												LocalPlayer.Character.HumanoidRootPart.CFrame = newCFrame;
+											end
+											break;
+										end
+										if (FlatIdent_44652 == 0) then
+											targetHRP = TargetPlayer.Character.HumanoidRootPart;
+											backOffset = targetHRP.CFrame.LookVector * -settings.TPAura_Distance;
+											FlatIdent_44652 = 1;
+										end
+									end
+								end
+							end);
+							task.wait(settings.TPAura_Duration);
+							FlatIdent_70C30 = 2;
+						end
+					end
+				end
+				break;
+			end
+			if (0 == FlatIdent_904EC) then
+				task.wait(settings.TPAura_Interval);
+				getRandomPlayer = nil;
+				FlatIdent_904EC = 1;
+			end
+			if (FlatIdent_904EC == 2) then
+				function getRandomPlayerInRange()
+					local FlatIdent_61F8A = 0;
+					local playersInRange;
+					while true do
+						if (FlatIdent_61F8A == 1) then
+							if (#playersInRange > 0) then
+								return playersInRange[math.random(1, #playersInRange)];
+							end
+							break;
+						end
+						if (FlatIdent_61F8A == 0) then
+							playersInRange = {};
+							for _, player in ipairs(Players:GetPlayers()) do
+								if ((player ~= LocalPlayer) and player.Character and player.Character:FindFirstChild("HumanoidRootPart")) then
+									local FlatIdent_8384B = 0;
+									local targetHRP;
+									local localHRP;
+									while true do
+										if (FlatIdent_8384B == 0) then
+											targetHRP = player.Character.HumanoidRootPart;
+											localHRP = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart");
+											FlatIdent_8384B = 1;
+										end
+										if (FlatIdent_8384B == 1) then
+											if localHRP then
+												local FlatIdent_68E5B = 0;
+												local delta;
+												while true do
+													if (FlatIdent_68E5B == 0) then
+														delta = targetHRP.Position - localHRP.Position;
+														if ((math.abs(delta.X) <= settings.TPAura_RangeX) and (math.abs(delta.Z) <= settings.TPAura_RangeY)) then
+															table.insert(playersInRange, player);
+														end
+														break;
+													end
+												end
+											end
+											break;
+										end
+									end
+								end
+							end
+							FlatIdent_61F8A = 1;
+						end
+					end
+				end
+				TargetPlayer = nil;
+				FlatIdent_904EC = 3;
+			end
+		end
+	end
+end, settings.TPAura);
+local TPAuraTeamCheck_Toggle = library:CreateToggle(TPAura_Item, "Team Check", function(toggled)
+	settings.TPAura_TeamCheck = toggled;
+end, settings.TPAura_TeamCheck);
+local TPAuraInterval_Slider = library:CreateSlider(TPAura_Item, "Interval", 1, 1000, 100, function(Interval)
+	settings.TPAura_Interval = Interval * 0.001;
+end, settings.TPAura_Interval);
+local TPAuraDuration_Slider = library:CreateSlider(TPAura_Item, "Duration", 1, 10, 2, function(Duration)
+	settings.TPAura_Duration = Duration;
+end, settings.TPAura_Duration);
+local TPAuraDistance_Slider = library:CreateSlider(TPAura_Item, "Disrance", 1, 10, 3, function(Disrance)
+	settings.TPAura_Distance = Disrance;
+end, settings.TPAura_Distance);
+local TPAuraRange_Toggle = library:CreateToggle(TPAura_Item, "Range", function(toggled)
+	settings.TPAura_Range = toggled;
+end, settings.TPAura_Range);
+local TPAuraRangeX_Slider = library:CreateSlider(TPAura_Item, "X", 1, 100, 10, function(x)
+	settings.TPAura_RangeX = x * 10;
+end, settings.TPAura_RangeX * 10);
+local TPAuraRangeY_Silder = library:CreateSlider(TPAura_Item, "Y", 1, 100, 10, function(y)
+	settings.TPAura_RangeY = y * 10;
+end, settings.TPAura_RangeY * 10);
+local Fullbright_Item = library:CreateItem(VisualsWindow.Content, "Fullbright", true, function(toggled)
+	local FlatIdent_3B2E6 = 0;
+	while true do
+		if (FlatIdent_3B2E6 == 0) then
+			settings.Fullbright = toggled;
+			if not toggled then
+				local FlatIdent_1E39B = 0;
+				while true do
+					if (FlatIdent_1E39B == 0) then
+						Lighting.Ambient = LocalConfig.defaultAmbientLight;
+						Lighting.OutdoorAmbient = LocalConfig.defaultOutdoorAmbientLight;
+						break;
+					end
+				end
+			else
+				local FlatIdent_8A1DB = 0;
+				local Level;
+				while true do
+					if (0 == FlatIdent_8A1DB) then
+						Level = settings.Fullbright_Level;
+						Lighting.Ambient = Color3.new(Level, Level, Level);
+						FlatIdent_8A1DB = 1;
+					end
+					if (FlatIdent_8A1DB == 1) then
+						Lighting.OutdoorAmbient = Color3.new(Level, Level, Level);
+						break;
+					end
+				end
+			end
+			break;
+		end
+	end
+end, settings.Fullbright);
+local Fullbright_Slider = library:CreateSlider(Fullbright_Item, "Fullbright Level", 1, 20, 10, function(Level)
+	local FlatIdent_4EC26 = 0;
+	local Level;
+	while true do
+		if (FlatIdent_4EC26 == 1) then
+			if settings.Fullbright then
+				local FlatIdent_7268B = 0;
+				while true do
+					if (FlatIdent_7268B == 0) then
+						Lighting.Ambient = Color3.new(Level, Level, Level);
+						Lighting.OutdoorAmbient = Color3.new(Level, Level, Level);
+						break;
+					end
+				end
+			end
+			break;
+		end
+		if (FlatIdent_4EC26 == 0) then
+			Level = Level * 0.1;
+			settings.Fullbright_Level = Level;
+			FlatIdent_4EC26 = 1;
+		end
+	end
+end, settings.Fullbright_Level * 10);
+local Trajectories_Item = library:CreateItem(VisualsWindow.Content, "Trajectories", true, function(toggled)
+	settings.Trajectories = toggled;
+	local char = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait();
+	local TrailSystem = {IsEnabled=true,CurrentTrail=nil};
+	local function createTrail(part)
+		local FlatIdent_2F8E7 = 0;
+		local attachment1;
+		local attachment2;
+		local trail;
+		while true do
+			if (2 == FlatIdent_2F8E7) then
+				attachment2.Position = Vector3.new(0, -0.5, 0);
+				attachment2.Parent = part;
+				trail = Instance.new("Trail");
+				FlatIdent_2F8E7 = 3;
+			end
+			if (FlatIdent_2F8E7 == 6) then
+				trail.FaceCamera = true;
+				trail.Parent = part;
+				TrailSystem.CurrentTrail = trail;
+				FlatIdent_2F8E7 = 7;
+			end
+			if (FlatIdent_2F8E7 == 5) then
+				trail.Lifetime = settings.Trajectories_Lifetime;
+				trail.MinLength = settings.Trajectories_MinLength;
+				trail.MaxLength = settings.Trajectories_MaxLength;
+				FlatIdent_2F8E7 = 6;
+			end
+			if (FlatIdent_2F8E7 == 4) then
+				trail.Color = ColorSequence.new({ColorSequenceKeypoint.new(0, Color3.fromRGB(85, 170, 255)),ColorSequenceKeypoint.new(0.5, Color3.fromRGB(170, 85, 255)),ColorSequenceKeypoint.new(1, Color3.fromRGB(255, 85, 127))});
+				trail.Transparency = NumberSequence.new({NumberSequenceKeypoint.new(0, 0),NumberSequenceKeypoint.new(0.8, 0.5),NumberSequenceKeypoint.new(1, 1)});
+				trail.WidthScale = NumberSequence.new({NumberSequenceKeypoint.new(0, settings.Trajectories_Width),NumberSequenceKeypoint.new(1, 0)});
+				FlatIdent_2F8E7 = 5;
+			end
+			if (FlatIdent_2F8E7 == 1) then
+				attachment1.Parent = part;
+				attachment2 = Instance.new("Attachment");
+				attachment2.Name = "TrailAttachment2";
+				FlatIdent_2F8E7 = 2;
+			end
+			if (FlatIdent_2F8E7 == 3) then
+				trail.Name = "PlayerTrail";
+				trail.Attachment0 = attachment1;
+				trail.Attachment1 = attachment2;
+				FlatIdent_2F8E7 = 4;
+			end
+			if (FlatIdent_2F8E7 == 0) then
+				attachment1 = Instance.new("Attachment");
+				attachment1.Name = "TrailAttachment1";
+				attachment1.Position = Vector3.new(0, -1.5, 0);
+				FlatIdent_2F8E7 = 1;
+			end
+			if (FlatIdent_2F8E7 == 7) then
+				return trail;
+			end
+		end
+	end
+	if not char then
+		char = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait();
+	end
+	if not char:FindFirstChild("HumanoidRootPart") then
+		char:WaitForChild("HumanoidRootPart");
+	end
+	local humanoid = char:WaitForChild("Humanoid");
+	local rootPart = char:WaitForChild("HumanoidRootPart");
+	local lowerTorso = char:FindFirstChild("LowerTorso") or char:FindFirstChild("Torso");
+	local trailPart = lowerTorso or rootPart;
+	local trail = createTrail(trailPart);
+	local lastCharacter = nil;
+	while settings.Trajectories do
+		local FlatIdent_624DF = 0;
+		local char;
+		while true do
+			if (FlatIdent_624DF == 1) then
+				if lastCharacter then
+					local humanoid = lastCharacter:FindFirstChild("Humanoid");
+					local trailPart = lastCharacter:FindFirstChild("LowerTorso") or lastCharacter:FindFirstChild("Torso") or lastCharacter:FindFirstChild("HumanoidRootPart");
+					local trail = trailPart and trailPart:FindFirstChild("PlayerTrail");
+					if (humanoid and trail) then
+						local FlatIdent_30E68 = 0;
+						local speed;
+						while true do
+							if (FlatIdent_30E68 == 0) then
+								speed = humanoid.MoveDirection.Magnitude;
+								if (speed > settings.Trajectories_MinSpeed) then
+									trail.Enabled = true;
+								else
+									trail.Enabled = false;
+								end
+								break;
+							end
+						end
+					end
+				end
+				task.wait(0.08);
+				break;
+			end
+			if (FlatIdent_624DF == 0) then
+				char = LocalPlayer.Character;
+				if (char and (char ~= lastCharacter)) then
+					lastCharacter = char;
+					local rootPart = char:WaitForChild("HumanoidRootPart");
+					local humanoid = char:WaitForChild("Humanoid");
+					local lowerTorso = char:FindFirstChild("LowerTorso") or char:FindFirstChild("Torso");
+					local trailPart = lowerTorso or rootPart;
+					if not trailPart:FindFirstChild("PlayerTrail") then
+						createTrail(trailPart);
+					end
+				end
+				FlatIdent_624DF = 1;
+			end
+		end
+	end
+	local trail = trailPart and trailPart:FindFirstChild("PlayerTrail");
+	if trail then
+		trail:Destroy();
+	end
+end, settings.Trajectories);
+local TrajectoriesLifetime_Slider = library:CreateSlider(Trajectories_Item, "Lifetime", 1, 100, 60, function(Lifetime)
+	settings.Trajectories_Lifetime = Lifetime * 0.01;
+end, settings.Trajectories_Lifetime * 10);
+local TrajectoriesWidth_Slider = library:CreateSlider(Trajectories_Item, "Width", 1, 100, 10, function(Width)
+	settings.Trajectories_Width = Width * 0.1;
+end, settings.Trajectories_Width * 10);
+local TrajectoriesMinMaxLength_RangeSlider = library:CreateRangeSlider(Trajectories_Item, "Length", 1, 500, 10, 200, function(Min, Max)
+	local FlatIdent_755A7 = 0;
+	while true do
+		if (FlatIdent_755A7 == 0) then
+			settings.Trajectories_MinLength = Min * 0.1;
+			settings.Trajectories_MaxLength = Max * 0.1;
+			break;
+		end
+	end
+end, settings.Trajectories_MinLength * 10, settings.Trajectories_MaxLength * 10);
+local CustomFOV_Item = library:CreateItem(VisualsWindow.Content, "Custom FOV", true, function(toggled)
+	local FlatIdent_47C14 = 0;
+	while true do
+		if (FlatIdent_47C14 == 0) then
+			settings.Custom_FOV = toggled;
+			if not toggled then
+				Camera.FieldOfView = LocalConfig.defaultFOV;
+			else
+				Camera.FieldOfView = settings.Custom_FOV;
+			end
+			break;
+		end
+	end
+end, settings.Custom_FOV);
+local CustomFOV_Slider = library:CreateSlider(CustomFOV_Item, "Size", 50, 120, 70, function(FOV)
+	if settings.Custom_FOV then
+		Camera.FieldOfView = FOV;
+	end
+end);
+local ESP_Item = library:CreateItem(VisualsWindow.Content, "ESP", true, function(toggled)
+	settings.ESP = toggled;
+end, settings.ESP);
+local ESPHealth_Toggle = library:CreateToggle(ESP_Item, "Health", function(toggled)
+	settings.ESP_Health = toggled;
+end, settings.ESP_Health);
+local ESPThickness_Slider = library:CreateSlider(ESP_Item, "Thickness", 1, 30, 5, function(Thickness)
+	settings.ESP_Thickness = Thickness * 0.4;
+end, settings.ESP_Thickness / 0.4);
+local ESPupdateInterval_Slider = library:CreateSlider(ESP_Item, "Update Interval", 1, 100, 45, function(Interval)
+	settings.ESP_updateInterval = Interval * 0.0002;
+end, settings.ESP_updateInterval / 0.0002);
+local ESPTeamColor_Toggle = library:CreateToggle(ESP_Item, "Team Color", function(toggled)
+	settings.ESP_TeamColor = toggled;
+end, settings.ESP_TeamColor);
+local ESP_style = library:CreateDropdown(ESP_Item, "Style", {"2D","3D"}, function(style)
+	settings.ESP_style = style;
+end, settings.ESP_style);
+local accumulatedTime = 0;
+local function createESP(Player)
+	if (Player == LocalPlayer) then
+		return;
+	end
+	local ESP = {};
+	ESP.Box = Drawing.new("Square");
+	ESP.Tracer = Drawing.new("Line");
+	ESP.NameTag = Drawing.new("Text");
+	ESP.HealthBar = Drawing.new("Square");
+	ESP.HealthText = Drawing.new("Text");
+	ESP.DistanceText = Drawing.new("Text");
+	local function initDrawing(drawingObj, props)
+		for k, v in pairs(props) do
+			drawingObj[k] = v;
+		end
+	end
+	initDrawing(ESP.Box, {Thickness=2,Filled=false,Color=Color3.new(1, 1, 1),Transparency=1,Visible=false});
+	initDrawing(ESP.Tracer, {Thickness=1,Color=Color3.new(1, 1, 1),Transparency=1,Visible=false});
+	initDrawing(ESP.NameTag, {Size=16,Color=Color3.new(1, 1, 1),Center=true,Outline=true,Font=2,Visible=false});
+	initDrawing(ESP.HealthBar, {Thickness=2,Filled=true,Color=Color3.new(0, 1, 0),Transparency=1,Visible=false});
+	initDrawing(ESP.HealthText, {Size=14,Color=Color3.new(1, 1, 1),Center=true,Outline=true,Font=2,Visible=false});
+	initDrawing(ESP.DistanceText, {Size=14,Color=Color3.new(1, 1, 1),Center=true,Outline=true,Font=2,Visible=false});
+	local accumulatedTime = 0;
+	local connection;
+	local function updateESP(delta)
+		accumulatedTime = accumulatedTime + delta;
+		if (accumulatedTime < settings.ESP_updateInterval) then
+			return;
+		end
+		accumulatedTime = 0;
+		local Character = Player.Character;
+		if (not Character or not Character.Parent) then
+			local FlatIdent_3EDDC = 0;
+			while true do
+				if (FlatIdent_3EDDC == 0) then
+					for _, d in pairs(ESP) do
+						d.Visible = false;
+					end
+					return;
+				end
+			end
+		end
+		local Humanoid = Character:FindFirstChildOfClass("Humanoid");
+		if (not Humanoid or (Humanoid.Health <= 0)) then
+			local FlatIdent_643B6 = 0;
+			while true do
+				if (FlatIdent_643B6 == 0) then
+					for _, d in pairs(ESP) do
+						d.Visible = false;
+					end
+					return;
+				end
+			end
+		end
+		local teamColor = (Player.TeamColor and Player.TeamColor.Color) or Color3.new(1, 1, 1);
+		ESP.Box.Color = (settings.ESP_TeamColor and teamColor) or Color3.new(1, 1, 1);
+		ESP.Tracer.Color = (settings.Tracers_TeamColor and teamColor) or Color3.new(1, 1, 1);
+		ESP.NameTag.Color = (settings.NameTag_TeamColor and teamColor) or Color3.new(1, 1, 1);
+		ESP.DistanceText.Color = ESP.NameTag.Color;
+		local bbCFrame, bbSize = Character:GetBoundingBox();
+		if (not bbCFrame or not bbSize) then
+			for _, d in pairs(ESP) do
+				d.Visible = false;
+			end
+			return;
+		end
+		local halfSize = bbSize * 0.5;
+		local corners = {(bbCFrame * CFrame.new(halfSize.X, halfSize.Y, halfSize.Z)).p,(bbCFrame * CFrame.new(halfSize.X, halfSize.Y, -halfSize.Z)).p,(bbCFrame * CFrame.new(halfSize.X, -halfSize.Y, halfSize.Z)).p,(bbCFrame * CFrame.new(halfSize.X, -halfSize.Y, -halfSize.Z)).p,(bbCFrame * CFrame.new(-halfSize.X, halfSize.Y, halfSize.Z)).p,(bbCFrame * CFrame.new(-halfSize.X, halfSize.Y, -halfSize.Z)).p,(bbCFrame * CFrame.new(-halfSize.X, -halfSize.Y, halfSize.Z)).p,(bbCFrame * CFrame.new(-halfSize.X, -halfSize.Y, -halfSize.Z)).p};
+		local minX, minY = math.huge, math.huge;
+		local maxX, maxY = -math.huge, -math.huge;
+		local onScreenFound = false;
+		for _, corner in ipairs(corners) do
+			local FlatIdent_8DBF2 = 0;
+			local screenPos;
+			local onScreen;
+			while true do
+				if (FlatIdent_8DBF2 == 0) then
+					screenPos, onScreen = Camera:WorldToViewportPoint(corner);
+					if onScreen then
+						local FlatIdent_4BEE8 = 0;
+						while true do
+							if (FlatIdent_4BEE8 == 0) then
+								onScreenFound = true;
+								minX = math.min(minX, screenPos.X);
+								FlatIdent_4BEE8 = 1;
+							end
+							if (FlatIdent_4BEE8 == 2) then
+								maxY = math.max(maxY, screenPos.Y);
+								break;
+							end
+							if (FlatIdent_4BEE8 == 1) then
+								minY = math.min(minY, screenPos.Y);
+								maxX = math.max(maxX, screenPos.X);
+								FlatIdent_4BEE8 = 2;
+							end
+						end
+					end
+					break;
+				end
+			end
+		end
+		if not onScreenFound then
+			for _, d in pairs(ESP) do
+				d.Visible = false;
+			end
+			return;
+		end
+		local boxPos = Vector2.new(minX, minY);
+		local boxSize = Vector2.new(maxX - minX, maxY - minY);
+		ESP.Box.Position = boxPos;
+		ESP.Box.Size = boxSize;
+		ESP.Box.Visible = settings.ESP;
+		ESP.Box.Thickness = settings.ESP_Thickness;
+		local screenBottom = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y);
+		local boxCenter = boxPos + (boxSize * 0.5);
+		ESP.Tracer.From = screenBottom;
+		ESP.Tracer.To = boxCenter;
+		ESP.Tracer.Visible = settings.Tracers;
+		ESP.Tracer.Thickness = settings.Tracers_Thickness;
+		ESP.NameTag.Text = Player.Name;
+		ESP.NameTag.Position = boxPos + Vector2.new(boxSize.X / 2, -20);
+		ESP.NameTag.Visible = settings.NameTag;
+		ESP.NameTag.Size = settings.NameTag_Size;
+		local healthRatio = Humanoid.Health / Humanoid.MaxHealth;
+		local healthBarHeight = boxSize.Y * healthRatio;
+		ESP.HealthBar.Size = Vector2.new(4, healthBarHeight);
+		ESP.HealthBar.Position = Vector2.new(boxPos.X - 8, (boxPos.Y + boxSize.Y) - healthBarHeight);
+		ESP.HealthBar.Color = Color3.new(1 - healthRatio, healthRatio, 0);
+		ESP.HealthBar.Visible = (settings.ESP and settings.ESP_Health) or false;
+		ESP.HealthText.Text = math.floor(healthRatio * 100) .. "%";
+		ESP.HealthText.Position = Vector2.new(boxPos.X + (boxSize.X / 2), boxPos.Y + boxSize.Y + 5);
+		ESP.HealthText.Visible = ESP.HealthBar.Visible;
+		local localCharacter = LocalPlayer.Character;
+		if (localCharacter and localCharacter:FindFirstChild("HumanoidRootPart") and Character:FindFirstChild("HumanoidRootPart")) then
+			local FlatIdent_23A2C = 0;
+			local distance;
+			while true do
+				if (1 == FlatIdent_23A2C) then
+					ESP.DistanceText.Position = boxPos + Vector2.new(boxSize.X / 2, -35);
+					ESP.DistanceText.Size = settings.NameTag_Size;
+					FlatIdent_23A2C = 2;
+				end
+				if (FlatIdent_23A2C == 2) then
+					ESP.DistanceText.Visible = (settings.NameTag_Distance and settings.NameTag) or false;
+					break;
+				end
+				if (FlatIdent_23A2C == 0) then
+					distance = (localCharacter.HumanoidRootPart.Position - Character:GetPrimaryPartCFrame().p).Magnitude;
+					ESP.DistanceText.Text = string.format("%.1fm", distance);
+					FlatIdent_23A2C = 1;
+				end
+			end
+		else
+			ESP.DistanceText.Visible = false;
+		end
+	end
+	connection = RunService.RenderStepped:Connect(function(delta)
+		if (not Player or not Player.Parent) then
+			local FlatIdent_5062 = 0;
+			while true do
+				if (FlatIdent_5062 == 1) then
+					return;
+				end
+				if (0 == FlatIdent_5062) then
+					connection:Disconnect();
+					for _, d in pairs(ESP) do
+						d:Remove();
+					end
+					FlatIdent_5062 = 1;
+				end
+			end
+		end
+		updateESP(delta);
+	end);
+end
+for _, Player in pairs(Players:GetPlayers()) do
+	if (Player ~= LocalPlayer) then
+		createESP(Player);
+	end
+end
+Players.PlayerAdded:Connect(function(Player)
+	Player.CharacterAdded:Connect(function()
+		createESP(Player);
+	end);
+end);
+local Glow_Item = library:CreateItem(VisualsWindow.Content, "Glow", false, function(toggled)
+	local FlatIdent_87DF2 = 0;
+	local applyGlow;
+	local updateGlow;
+	while true do
+		if (FlatIdent_87DF2 == 0) then
+			settings.Glow = toggled;
+			applyGlow = nil;
+			FlatIdent_87DF2 = 1;
+		end
+		if (1 == FlatIdent_87DF2) then
+			function applyGlow(character)
+				if (character and not character:FindFirstChild("ESPGlow")) then
+					local FlatIdent_EE01 = 0;
+					local highlight;
+					while true do
+						if (0 == FlatIdent_EE01) then
+							highlight = Instance.new("Highlight");
+							highlight.Name = "ESPGlow";
+							FlatIdent_EE01 = 1;
+						end
+						if (FlatIdent_EE01 == 2) then
+							highlight.OutlineColor = Color3.fromRGB(255, 255, 255);
+							highlight.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop;
+							break;
+						end
+						if (FlatIdent_EE01 == 1) then
+							highlight.Parent = character;
+							highlight.FillColor = Color3.fromRGB(0, 255, 0);
+							FlatIdent_EE01 = 2;
+						end
+					end
+				end
+			end
+			for _, player in ipairs(Players:GetPlayers()) do
+				if player.Character then
+					local FlatIdent_72401 = 0;
+					local character;
+					local highlight;
+					while true do
+						if (1 == FlatIdent_72401) then
+							if highlight then
+								highlight.Enabled = settings.Glow;
+							end
+							break;
+						end
+						if (FlatIdent_72401 == 0) then
+							character = player.Character;
+							highlight = character:FindFirstChild("ESPGlow");
+							FlatIdent_72401 = 1;
+						end
+					end
+				end
+			end
+			FlatIdent_87DF2 = 2;
+		end
+		if (3 == FlatIdent_87DF2) then
+			while settings.Glow do
+				local FlatIdent_67029 = 0;
+				while true do
+					if (FlatIdent_67029 == 0) then
+						task.wait(0.1);
+						updateGlow();
+						break;
+					end
+				end
+			end
+			break;
+		end
+		if (FlatIdent_87DF2 == 2) then
+			updateGlow = nil;
+			function updateGlow()
+				for _, player in ipairs(Players:GetPlayers()) do
+					if ((player ~= LocalPlayer) and player.Character) then
+						local character = player.Character;
+						if settings.Glow then
+							applyGlow(character);
+						else
+							local FlatIdent_30B76 = 0;
+							local highlight;
+							while true do
+								if (FlatIdent_30B76 == 0) then
+									highlight = character:FindFirstChild("ESPGlow");
+									if highlight then
+										highlight:Destroy();
+									end
+									break;
+								end
+							end
+						end
+					end
+				end
+			end
+			FlatIdent_87DF2 = 3;
+		end
+	end
+end, settings.Glow);
+local NameTag_Item = library:CreateItem(VisualsWindow.Content, "NameTag", true, function(toggled)
+	settings.NameTag = toggled;
+end, settings.NameTag);
+local NameTagdistance_Toggle = library:CreateToggle(NameTag_Item, "Distance", function(toggled)
+	settings.NameTag_Distance = toggled;
+end, settings.NameTag_Distance);
+local NameTagTeamColor_Toggle = library:CreateToggle(NameTag_Item, "Team Color", function(toggled)
+	settings.NameTag_TeamColor = toggled;
+end, settings.NameTag_TeamColor);
+local NameTagSize_Slider = library:CreateSlider(NameTag_Item, "Size", 1, 30, 16, function(Size)
+	settings.NameTag_Size = Size;
+end, settings.NameTag_Size);
+local Tracers_Item = library:CreateItem(VisualsWindow.Content, "Tracers", true, function(toggled)
+	settings.Tracers = toggled;
+end, settings.Tracers);
+local TracersColor_Toggle = library:CreateToggle(Tracers_Item, "Team Color", function(toggled)
+	settings.Tracers_TeamColor = toggled;
+end, settings.Tracers_TeamColor);
+local TracersThickness_Slider = library:CreateSlider(Tracers_Item, "Thickness", 1, 20, 10, function(Thickness)
+	settings.Tracers_Thickness = Thickness * 0.5;
+end, settings.Tracers_Thickness / 0.5);
+local ChainHat_Item = library:CreateItem(VisualsWindow.Content, "ChainHat", true, function(toggled)
+	settings.ChinaHat = toggled;
+	local character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait();
+	local hat, highlight;
+	local function createConeHat()
+		local FlatIdent_3A655 = 0;
+		local mesh;
+		while true do
+			if (FlatIdent_3A655 == 0) then
+				hat = Instance.new("Part");
+				hat.Name = "ChinaConeHat";
+				hat.Size = Vector3.new(4, 2, 4);
+				FlatIdent_3A655 = 1;
+			end
+			if (FlatIdent_3A655 == 2) then
+				hat.Transparency = settings.ChinaHat_Transparency;
+				hat.Color = settings.ChainHat_Color;
+				hat.Parent = character;
+				FlatIdent_3A655 = 3;
+			end
+			if (6 == FlatIdent_3A655) then
+				highlight.FillTransparency = 1 - settings.ChinaHat_Transparency;
+				highlight.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop;
+				break;
+			end
+			if (FlatIdent_3A655 == 1) then
+				hat.Anchored = true;
+				hat.CanCollide = false;
+				hat.Massless = true;
+				FlatIdent_3A655 = 2;
+			end
+			if (FlatIdent_3A655 == 3) then
+				mesh = Instance.new("SpecialMesh");
+				mesh.MeshType = Enum.MeshType.FileMesh;
+				mesh.MeshId = "rbxassetid://1033714";
+				FlatIdent_3A655 = 4;
+			end
+			if (FlatIdent_3A655 == 5) then
+				highlight.Parent = hat;
+				highlight.FillColor = settings.ChainHat_Color;
+				highlight.OutlineTransparency = 1;
+				FlatIdent_3A655 = 6;
+			end
+			if (4 == FlatIdent_3A655) then
+				mesh.Scale = Vector3.new(1.5, 1.5, 1.5);
+				mesh.Parent = hat;
+				highlight = Instance.new("Highlight");
+				FlatIdent_3A655 = 5;
+			end
+		end
+	end
+	createConeHat();
+	local hue = 0;
+	while settings.ChinaHat do
+		local FlatIdent_186F = 0;
+		while true do
+			if (FlatIdent_186F == 1) then
+				if (hat and character:FindFirstChild("Head")) then
+					local FlatIdent_38DAC = 0;
+					local head;
+					local distance;
+					while true do
+						if (0 == FlatIdent_38DAC) then
+							if settings.ChinaHat then
+								local FlatIdent_93540 = 0;
+								while true do
+									if (FlatIdent_93540 == 0) then
+										hat.Transparency = settings.ChinaHat_Transparency;
+										if highlight then
+											highlight.FillTransparency = 1 - settings.ChainHat_glowIntensity;
+											highlight.Enabled = true;
+										end
+										break;
+									end
+								end
+							else
+								local FlatIdent_37906 = 0;
+								while true do
+									if (FlatIdent_37906 == 0) then
+										hat.Transparency = 1;
+										if highlight then
+											highlight.Enabled = false;
+										end
+										break;
+									end
+								end
+							end
+							hat.Color = settings.ChainHat_Color;
+							FlatIdent_38DAC = 1;
+						end
+						if (FlatIdent_38DAC == 2) then
+							if head then
+								local FlatIdent_772BD = 0;
+								local newCFrame;
+								while true do
+									if (FlatIdent_772BD == 0) then
+										newCFrame = head.CFrame * CFrame.new(0, settings.ChinaHat_verticalOffset, 0);
+										hat.CFrame = newCFrame;
+										break;
+									end
+								end
+							end
+							if settings.ChainHat_RGB then
+								hue = (hue + settings.ChinaHat_colorChangeSpeed) % 1;
+								settings.ChainHat_Color = Color3.fromHSV(hue, 1, 1);
+							else
+								settings.ChainHat_Color = Color3.fromRGB(255, 255, 255);
+							end
+							FlatIdent_38DAC = 3;
+						end
+						if (FlatIdent_38DAC == 3) then
+							distance = (hat.Position - Camera.CFrame.Position).Magnitude;
+							if (distance < 5) then
+								hat.Transparency = 1;
+								if highlight then
+									highlight.FillTransparency = 1;
+								end
+							end
+							break;
+						end
+						if (FlatIdent_38DAC == 1) then
+							if highlight then
+								highlight.FillColor = settings.ChainHat_Color;
+							end
+							head = character:FindFirstChild("Head");
+							FlatIdent_38DAC = 2;
+						end
+					end
+				end
+				break;
+			end
+			if (0 == FlatIdent_186F) then
+				task.wait(0.01);
+				if (not hat or not hat.Parent) then
+					local FlatIdent_8DA9B = 0;
+					while true do
+						if (FlatIdent_8DA9B == 0) then
+							character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait();
+							createConeHat();
+							break;
+						end
+					end
+				end
+				FlatIdent_186F = 1;
+			end
+		end
+	end
+	if (hat and character:FindFirstChild("Head")) then
+		local FlatIdent_2CB11 = 0;
+		while true do
+			if (FlatIdent_2CB11 == 0) then
+				hat:Destroy();
+				highlight:Destroy();
+				break;
+			end
+		end
+	end
+end, settings.ChinaHat);
+local ChainHatRGB_Toggle = library:CreateToggle(ChainHat_Item, "RGB", function(toggled)
+	settings.ChainHat_RGB = toggled;
+end, settings.ChainHat_RGB);
+local ChainHatColorChangeSpeed_Slidee = library:CreateSlider(ChainHat_Item, "RGB Speed", 1, 10, 2, function(speed)
+	settings.ChinaHat_colorChangeSpeed = speed * 0.001;
+end, settings.ChinaHat_colorChangeSpeed / 0.001);
+local ChainHatTransparency_Slided = library:CreateSlider(ChainHat_Item, "Transparency", 1, 100, 60, function(Transparency)
+	settings.ChinaHat_Transparency = Transparency * 0.01;
+end, settings.ChinaHat_Transparency / 0.01);
+local ChainHatGlowIntenisty_Slider = library:CreateSlider(ChainHat_Item, "Glow Intensity", 1, 100, 40, function(Intensity)
+	settings.ChainHat_glowIntensity = Intensity * 0.01;
+end, settings.ChainHat_glowIntensity / 0.01);
+local ChainHatHight_Slider = library:CreateSlider(ChainHat_Item, "Hight", 0, 1000, 620, function(Hight)
+	settings.ChinaHat_verticalOffset = (Hight - 500) * 0.01;
+end, (settings.ChinaHat_verticalOffset / 0.01) + 500);
+local CustomCrosshair_Item = library:CreateItem(VisualsWindow.Content, "Custom Crosshair", true, function(toggled)
+	settings.CustomCrosshair = toggled;
+	local PlayerGui = LocalPlayer:WaitForChild("PlayerGui");
+	local screenGui = Instance.new("ScreenGui");
+	screenGui.Name = "CustomCrosshair";
+	screenGui.ResetOnSpawn = false;
+	screenGui.Parent = PlayerGui;
+	local crosshairFrame = Instance.new("Frame");
+	crosshairFrame.Name = "CrosshairFrame";
+	crosshairFrame.Size = UDim2.new(0, 0, 0, 0);
+	crosshairFrame.Position = UDim2.new(0.5, 0, 0.5, 0);
+	crosshairFrame.AnchorPoint = Vector2.new(0.5, 0.5);
+	crosshairFrame.BackgroundTransparency = 1;
+	crosshairFrame.Parent = screenGui;
+	local centerDot;
+	if settings.CustomCrosshair_Dot then
+		local FlatIdent_AF23 = 0;
+		while true do
+			if (FlatIdent_AF23 == 3) then
+				centerDot.Parent = crosshairFrame;
+				break;
+			end
+			if (FlatIdent_AF23 == 0) then
+				centerDot = Instance.new("Frame");
+				centerDot.Name = "CenterDot";
+				FlatIdent_AF23 = 1;
+			end
+			if (FlatIdent_AF23 == 1) then
+				centerDot.Size = UDim2.new(0, settings.CustomCrosshair_DotSize, 0, settings.CustomCrosshair_DotSize);
+				centerDot.Position = UDim2.new(0.5, -settings.CustomCrosshair_DotSize / 2, 0.5, -settings.CustomCrosshair_DotSize / 2);
+				FlatIdent_AF23 = 2;
+			end
+			if (FlatIdent_AF23 == 2) then
+				centerDot.BackgroundColor3 = settings.CustomCrosshair_Color;
+				centerDot.BorderSizePixel = 0;
+				FlatIdent_AF23 = 3;
+			end
+		end
+	end
+	local lines = {};
+	local directions = {{name="Up",pos=UDim2.new(0.5, -settings.CustomCrosshair_Thickness / 2, 0, -settings.CustomCrosshair_Gap - settings.CustomCrosshair_Length)},{name="Down",pos=UDim2.new(0.5, -settings.CustomCrosshair_Thickness / 2, 1, settings.CustomCrosshair_Gap)},{name="Left",pos=UDim2.new(0, -settings.CustomCrosshair_Gap - settings.CustomCrosshair_Length, 0.5, -settings.CustomCrosshair_Thickness / 2)},{name="Right",pos=UDim2.new(1, settings.CustomCrosshair_Gap, 0.5, -settings.CustomCrosshair_Thickness / 2)}};
+	for _, dir in ipairs(directions) do
+		local FlatIdent_5B487 = 0;
+		local line;
+		while true do
+			if (FlatIdent_5B487 == 2) then
+				if ((dir.name == "Up") or (dir.name == "Down")) then
+					line.Size = UDim2.new(0, settings.CustomCrosshair_Thickness, 0, settings.CustomCrosshair_Length);
+				else
+					line.Size = UDim2.new(0, settings.CustomCrosshair_Length, 0, settings.CustomCrosshair_Thickness);
+				end
+				line.Position = dir.pos;
+				FlatIdent_5B487 = 3;
+			end
+			if (FlatIdent_5B487 == 3) then
+				line.Parent = crosshairFrame;
+				table.insert(lines, line);
+				break;
+			end
+			if (FlatIdent_5B487 == 0) then
+				line = Instance.new("Frame");
+				line.Name = dir.name;
+				FlatIdent_5B487 = 1;
+			end
+			if (FlatIdent_5B487 == 1) then
+				line.BackgroundColor3 = settings.CustomCrosshair_Color;
+				line.BorderSizePixel = 0;
+				FlatIdent_5B487 = 2;
+			end
+		end
+	end
+	local UserInputService = game:GetService("UserInputService");
+	while settings.CustomCrosshair do
+		local FlatIdent_80A55 = 0;
+		local mousePos;
+		while true do
+			if (FlatIdent_80A55 == 0) then
+				task.wait(0.065);
+				mousePos = UserInputService:GetMouseLocation();
+				FlatIdent_80A55 = 1;
+			end
+			if (FlatIdent_80A55 == 2) then
+				for _, line in ipairs(lines) do
+					local FlatIdent_8B622 = 0;
+					while true do
+						if (FlatIdent_8B622 == 0) then
+							line.BackgroundColor3 = settings.CustomCrosshair_Color;
+							if (line.Name == "Up") then
+								line.Size = UDim2.new(0, settings.CustomCrosshair_Thickness, 0, settings.CustomCrosshair_Length);
+								line.Position = UDim2.new(0.5, -settings.CustomCrosshair_Thickness / 2, 0, -settings.CustomCrosshair_Gap - settings.CustomCrosshair_Length);
+							elseif (line.Name == "Down") then
+								line.Size = UDim2.new(0, settings.CustomCrosshair_Thickness, 0, settings.CustomCrosshair_Length);
+								line.Position = UDim2.new(0.5, -settings.CustomCrosshair_Thickness / 2, 1, settings.CustomCrosshair_Gap);
+							elseif (line.Name == "Left") then
+								local FlatIdent_39FCB = 0;
+								while true do
+									if (FlatIdent_39FCB == 0) then
+										line.Size = UDim2.new(0, settings.CustomCrosshair_Length, 0, settings.CustomCrosshair_Thickness);
+										line.Position = UDim2.new(0, -settings.CustomCrosshair_Gap - settings.CustomCrosshair_Length, 0.5, -settings.CustomCrosshair_Thickness / 2);
+										break;
+									end
+								end
+							elseif (line.Name == "Right") then
+								local FlatIdent_212D3 = 0;
+								while true do
+									if (FlatIdent_212D3 == 0) then
+										line.Size = UDim2.new(0, settings.CustomCrosshair_Length, 0, settings.CustomCrosshair_Thickness);
+										line.Position = UDim2.new(1, settings.CustomCrosshair_Gap, 0.5, -settings.CustomCrosshair_Thickness / 2);
+										break;
+									end
+								end
+							end
+							break;
+						end
+					end
+				end
+				break;
+			end
+			if (FlatIdent_80A55 == 1) then
+				crosshairFrame.Position = UDim2.new(0, mousePos.X, 0, mousePos.Y);
+				if centerDot then
+					centerDot.Size = UDim2.new(0, settings.CustomCrosshair_DotSize, 0, settings.CustomCrosshair_DotSize);
+					centerDot.Position = UDim2.new(0.5, -settings.CustomCrosshair_DotSize / 2, 0.5, -settings.CustomCrosshair_DotSize / 2);
+					centerDot.BackgroundColor3 = settings.CustomCrosshair_Color;
+				end
+				FlatIdent_80A55 = 2;
+			end
+		end
+	end
+	crosshairFrame:Destroy();
+end, settings.CustomCrosshair);
+local CustomCrosshairThickness_Slider = library:CreateSlider(CustomCrosshair_Item, "Thickness", 1, 100, 20, function(Thickness)
+	settings.CustomCrosshair_Thickness = Thickness * 0.1;
+end, settings.CustomCrosshair_Thickness / 0.1);
+local CustomCrosshairLength_Slider = library:CreateSlider(CustomCrosshair_Item, "Length", 1, 400, 10, function(Length)
+	settings.CustomCrosshair_Length = Length;
+end, settings.CustomCrosshair_Length);
+local CustomCrosshairGap_Slider = library:CreateSlider(CustomCrosshair_Item, "Gap", 1, 500, 50, function(Gap)
+	settings.CustomCrosshair_Gap = Gap * 0.1;
+end, settings.CustomCrosshair_Gap / 0.1);
+local CustomCrosshairDotSize_Slider = library:CreateSlider(CustomCrosshair_Item, "Dot Size", 1, 300, 20, function(Size)
+	settings.CustomCrosshair_DotSize = Size * 0.1;
+end, settings.CustomCrosshair_DotSize / 0.1);
+local CustomCrosshairColor_DownDrop = library:CreateDropdown(CustomCrosshair_Item, "Color", {"Blue","Green","Red","Yellow","Purple","Orange","Cyan","Magenta","White","Black"}, function(Color)
+	if (Color == "Blue") then
+		settings.CustomCrosshair_Color = Color3.fromRGB(0, 0, 255);
+	elseif (Color == "Green") then
+		settings.CustomCrosshair_Color = Color3.fromRGB(0, 255, 0);
+	elseif (Color == "Red") then
+		settings.CustomCrosshair_Color = Color3.fromRGB(255, 0, 0);
+	elseif (Color == "Yellow") then
+		settings.CustomCrosshair_Color = Color3.fromRGB(255, 255, 0);
+	elseif (Color == "Purple") then
+		settings.CustomCrosshair_Color = Color3.fromRGB(128, 0, 128);
+	elseif (Color == "Orange") then
+		settings.CustomCrosshair_Color = Color3.fromRGB(255, 165, 0);
+	elseif (Color == "Cyan") then
+		settings.CustomCrosshair_Color = Color3.fromRGB(0, 255, 255);
+	elseif (Color == "Magenta") then
+		settings.CustomCrosshair_Color = Color3.fromRGB(255, 0, 255);
+	elseif (Color == "White") then
+		settings.CustomCrosshair_Color = Color3.fromRGB(255, 255, 255);
+	elseif (Color == "Black") then
+		settings.CustomCrosshair_Color = Color3.fromRGB(0, 0, 0);
+	end
+end);
+local JumpWave_Item = library:CreateItem(VisualsWindow.Content, "JumpWave", true, function(toggled)
+	settings.JumpWave = toggled;
+	local function CreateWaveEffect(position)
+		local FlatIdent_7A6E5 = 0;
+		local rayOrigin;
+		local rayDirection;
+		local raycastParams;
+		local raycastResult;
+		while true do
+			if (FlatIdent_7A6E5 == 2) then
+				raycastParams.FilterDescendantsInstances = {LocalPlayer.Character};
+				raycastResult = workspace:Raycast(rayOrigin, rayDirection, raycastParams);
+				FlatIdent_7A6E5 = 3;
+			end
+			if (FlatIdent_7A6E5 == 3) then
+				if raycastResult then
+					local wave = Instance.new("Part");
+					wave.Anchored = true;
+					wave.CanCollide = false;
+					wave.Transparency = 0;
+					wave.BrickColor = BrickColor.new("Bright blue");
+					wave.Material = Enum.Material.Neon;
+					wave.Shape = Enum.PartType.Cylinder;
+					wave.Size = Vector3.new(0.1, 2, 1);
+					local surfaceNormal = raycastResult.Normal;
+					local surfaceCFrame = CFrame.new(raycastResult.Position + (surfaceNormal * 0.1));
+					wave.CFrame = surfaceCFrame * CFrame.Angles(0, 0, math.rad(90));
+					wave.Parent = workspace;
+					local tweenInfo = TweenInfo.new(settings.JumpWave_Duration, Enum.EasingStyle.Quad, Enum.EasingDirection.Out);
+					local tweenGoal = {Size=Vector3.new(0.1, 10 * settings.JumpWave_Size, 19 * settings.JumpWave_Size),Transparency=1};
+					local tween = TweenService:Create(wave, tweenInfo, tweenGoal);
+					tween:Play();
+					tween.Completed:Connect(function()
+						wave:Destroy();
+					end);
+				end
+				break;
+			end
+			if (FlatIdent_7A6E5 == 1) then
+				raycastParams = RaycastParams.new();
+				raycastParams.FilterType = Enum.RaycastFilterType.Blacklist;
+				FlatIdent_7A6E5 = 2;
+			end
+			if (FlatIdent_7A6E5 == 0) then
+				rayOrigin = position + Vector3.new(0, 1, 0);
+				rayDirection = Vector3.new(0, -10, 0);
+				FlatIdent_7A6E5 = 1;
+			end
+		end
+	end
+	local wasInAir = false;
+	local character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait();
+	local humanoid = character:WaitForChild("Humanoid");
+	while settings.JumpWave do
+		local FlatIdent_41533 = 0;
+		local isInAir;
+		while true do
+			if (2 == FlatIdent_41533) then
+				wasInAir = isInAir;
+				break;
+			end
+			if (FlatIdent_41533 == 0) then
+				task.wait(0.1);
+				if (not character or not humanoid) then
+					local FlatIdent_12809 = 0;
+					while true do
+						if (FlatIdent_12809 == 0) then
+							character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait();
+							humanoid = character:WaitForChild("Humanoid");
+							break;
+						end
+					end
+				end
+				FlatIdent_41533 = 1;
+			end
+			if (FlatIdent_41533 == 1) then
+				isInAir = humanoid.FloorMaterial == Enum.Material.Air;
+				if (wasInAir and not isInAir) then
+					local rootPart = character:FindFirstChild("HumanoidRootPart");
+					if rootPart then
+						CreateWaveEffect(rootPart.Position);
+					end
+				end
+				FlatIdent_41533 = 2;
+			end
+		end
+	end
+end, settings.JumpWave);
+local JumpWaveSize_Slider = library:CreateSlider(JumpWave_Item, "Size", 1, 100, 10, function(Size)
+	settings.JumpWave_Size = Size * 0.1;
+end, settings.JumpWave_Size / 0.1);
+local JumpWaveDuration_Slider = library:CreateSlider(JumpWave_Item, "Duration", 1, 50, 10, function(Duration)
+	settings.JumpWave_Duration = Duration * 0.1;
+end, settings.JumpWave_Duration / 0.1);
+local BackRunner_Item = library:CreateItem(VisualsWindow.Content, "BackRunner", false, function(toggled)
+	local FlatIdent_8671A = 0;
+	local character;
+	local humanoidRootPart;
+	while true do
+		if (1 == FlatIdent_8671A) then
+			humanoidRootPart = character:WaitForChild("HumanoidRootPart");
+			while settings.BackRunner do
+				task.wait(0.01);
+				if (character and humanoidRootPart) then
+					local FlatIdent_14E41 = 0;
+					local backLookVector;
+					local position;
+					while true do
+						if (FlatIdent_14E41 == 0) then
+							backLookVector = -Camera.CFrame.LookVector;
+							backLookVector = Vector3.new(backLookVector.X, 0, backLookVector.Z).unit;
+							FlatIdent_14E41 = 1;
+						end
+						if (FlatIdent_14E41 == 1) then
+							position = humanoidRootPart.Position;
+							humanoidRootPart.CFrame = CFrame.new(position, position + backLookVector);
+							break;
+						end
+					end
+				else
+					local FlatIdent_5B644 = 0;
+					while true do
+						if (FlatIdent_5B644 == 0) then
+							character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait();
+							humanoidRootPart = character:WaitForChild("HumanoidRootPart");
+							break;
+						end
+					end
+				end
+			end
+			break;
+		end
+		if (FlatIdent_8671A == 0) then
+			settings.BackRunner = toggled;
+			character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait();
+			FlatIdent_8671A = 1;
+		end
+	end
+end, settings.BackRunner);
+local PlayerTP = library:CreateItem(PlayerWindow.Content, "Player Teleport", true, function(toggled)
+	settings.PlayerTeleport = toggled;
+end, settings.PlayerTeleport);
+local PlayerTPTarget_DynamicDropdown = library:CreateDynamicDropdown(PlayerTP, "Target", function()
+	local FlatIdent_2595D = 0;
+	local playerNames;
+	while true do
+		if (FlatIdent_2595D == 0) then
+			playerNames = {};
+			for _, player in pairs(Players:GetPlayers()) do
+				table.insert(playerNames, player.Name);
+			end
+			FlatIdent_2595D = 1;
+		end
+		if (FlatIdent_2595D == 1) then
+			return playerNames;
+		end
+	end
+end, function(Target)
+	if settings.PlayerTeleport then
+		for _, player in pairs(Players:GetPlayers()) do
+			if (player.Name == Target) then
+				LocalPlayer.Character:MoveTo(player.Character.HumanoidRootPart.Position);
+				break;
+			end
+		end
+	end
+end, settings.PlayerTeleport);
+local ClickTP = library:CreateItem(PlayerWindow.Content, "Click Teleport", false, function(toggled)
+	local FlatIdent_65E70 = 0;
+	while true do
+		if (FlatIdent_65E70 == 0) then
+			settings.ClickTeleport = toggled;
+			while settings.ClickTeleport do
+				task.wait();
+				local input = UserInputService.InputBegan:Wait();
+				if (input.UserInputType == Enum.UserInputType.MouseButton1) then
+					LocalPlayer.Character:FindFirstChild("HumanoidRootPart").CFrame = CFrame.new(Mouse.Hit.Position);
+				end
+			end
+			break;
+		end
+	end
+end, settings.ClickTeleport);
+local Noclip_Item = library:CreateItem(MoventWindow.Content, "Noclip", false, function(toggled)
+	local FlatIdent_1ADAD = 0;
+	local Noclip;
+	while true do
+		if (FlatIdent_1ADAD == 2) then
+			Noclip(true);
+			break;
+		end
+		if (FlatIdent_1ADAD == 1) then
+			function Noclip(toggled)
+				if LocalPlayer.Character then
+					for _, part in ipairs(LocalPlayer.Character:GetChildren()) do
+						if part:IsA("BasePart") then
+							part.CanCollide = toggled;
+						end
+					end
+				end
+			end
+			while settings.Noclip do
+				local FlatIdent_94874 = 0;
+				while true do
+					if (FlatIdent_94874 == 0) then
+						task.wait(0.1);
+						Noclip(false);
+						break;
+					end
+				end
+			end
+			FlatIdent_1ADAD = 2;
+		end
+		if (FlatIdent_1ADAD == 0) then
+			settings.Noclip = toggled;
+			Noclip = nil;
+			FlatIdent_1ADAD = 1;
+		end
+	end
+end, settings.Noclip);
+local AirStep_Item = library:CreateItem(MoventWindow.Content, "AirStep", false, function(toggled)
+	settings.AirStep = toggled;
+end, settings.AirStep);
+local character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait();
+local humanoidRootPart = character:WaitForChild("HumanoidRootPart");
+local movementKeys = {[Enum.KeyCode.W]=false,[Enum.KeyCode.A]=false,[Enum.KeyCode.S]=false,[Enum.KeyCode.D]=false,[Enum.KeyCode.Space]=false};
+local function isMoving()
+	local FlatIdent_40B3B = 0;
+	while true do
+		if (FlatIdent_40B3B == 0) then
+			for key, pressed in pairs(movementKeys) do
+				if pressed then
+					return true;
+				end
+			end
+			return false;
+		end
+	end
+end
+UserInputService.InputBegan:Connect(function(input, gameProcessed)
+	if (movementKeys[input.KeyCode] ~= nil) then
+		movementKeys[input.KeyCode] = true;
+	end
+end);
+UserInputService.InputEnded:Connect(function(input, gameProcessed)
+	if (movementKeys[input.KeyCode] ~= nil) then
+		movementKeys[input.KeyCode] = false;
+	end
+end);
+RunService.Heartbeat:Connect(function()
+	if (settings.AirStep and not isMoving()) then
+		character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait();
+		humanoidRootPart = character:WaitForChild("HumanoidRootPart");
+		local currentVelocity = humanoidRootPart.Velocity;
+		humanoidRootPart.Velocity = Vector3.new(0, 0, 0);
+	end
+end);
+local Fly_Item = library:CreateItem(MoventWindow.Content, "Fly", true, function(toggled)
+	settings.Fly = toggled;
+	local function startFly(character)
+		local FlatIdent_394C = 0;
+		local hrp;
+		local humanoid;
+		local bodyVelocity;
+		while true do
+			if (FlatIdent_394C == 2) then
+				bodyVelocity.Name = "FlyVelocity";
+				bodyVelocity.Velocity = Vector3.new(0, 0, 0);
+				FlatIdent_394C = 3;
+			end
+			if (FlatIdent_394C == 3) then
+				bodyVelocity.MaxForce = Vector3.new(math.huge, math.huge, math.huge);
+				bodyVelocity.Parent = hrp;
+				FlatIdent_394C = 4;
+			end
+			if (FlatIdent_394C == 1) then
+				humanoid.PlatformStand = true;
+				bodyVelocity = Instance.new("BodyVelocity");
+				FlatIdent_394C = 2;
+			end
+			if (0 == FlatIdent_394C) then
+				hrp = character:WaitForChild("HumanoidRootPart");
+				humanoid = character:WaitForChild("Humanoid");
+				FlatIdent_394C = 1;
+			end
+			if (FlatIdent_394C == 4) then
+				if settings.Fly_Connection then
+					settings.Fly_Connection:Disconnect();
+				end
+				settings.Fly_Connection = RunService.Heartbeat:Connect(function()
+					if not settings.Fly then
+						settings.Fly_Connection:Disconnect();
+						settings.Fly_Connection = nil;
+						return;
+					end
+					local direction = Vector3.new(0, 0, 0);
+					if UserInputService:IsKeyDown(Enum.KeyCode.Space) then
+						direction = direction + Vector3.new(0, 1, 0);
+					end
+					if UserInputService:IsKeyDown(Enum.KeyCode.LeftControl) then
+						direction = direction + Vector3.new(0, -1, 0);
+					end
+					if UserInputService:IsKeyDown(Enum.KeyCode.W) then
+						direction = direction + Camera.CFrame.LookVector;
+					end
+					if UserInputService:IsKeyDown(Enum.KeyCode.S) then
+						direction = direction - Camera.CFrame.LookVector;
+					end
+					if UserInputService:IsKeyDown(Enum.KeyCode.A) then
+						direction = direction - Camera.CFrame.RightVector;
+					end
+					if UserInputService:IsKeyDown(Enum.KeyCode.D) then
+						direction = direction + Camera.CFrame.RightVector;
+					end
+					if (direction.Magnitude > 0) then
+						bodyVelocity.Velocity = direction.Unit * settings.Fly_Speed;
+					else
+						bodyVelocity.Velocity = Vector3.new(0, 0, 0);
+					end
+				end);
+				break;
+			end
+		end
+	end
+	local function stopFly(character)
+		local FlatIdent_7B4B6 = 0;
+		local humanoid;
+		local hrp;
+		while true do
+			if (FlatIdent_7B4B6 == 0) then
+				humanoid = character:FindFirstChild("Humanoid");
+				if humanoid then
+					humanoid.PlatformStand = false;
+				end
+				FlatIdent_7B4B6 = 1;
+			end
+			if (FlatIdent_7B4B6 == 2) then
+				if settings.Fly_Connection then
+					local FlatIdent_243D2 = 0;
+					while true do
+						if (FlatIdent_243D2 == 0) then
+							settings.Fly_Connection:Disconnect();
+							settings.Fly_Connection = nil;
+							break;
+						end
+					end
+				end
+				break;
+			end
+			if (FlatIdent_7B4B6 == 1) then
+				hrp = character:FindFirstChild("HumanoidRootPart");
+				if hrp then
+					local bodyVelocity = hrp:FindFirstChild("FlyVelocity");
+					if bodyVelocity then
+						bodyVelocity:Destroy();
+					end
+				end
+				FlatIdent_7B4B6 = 2;
+			end
+		end
+	end
+	local character = LocalPlayer.Character;
+	if character then
+		if settings.Fly then
+			startFly(character);
+		else
+			stopFly(character);
+		end
+	end
+	if not settings.CharacterAddedConnection then
+		settings.CharacterAddedConnection = LocalPlayer.CharacterAdded:Connect(function(newCharacter)
+			if settings.Fly then
+				newCharacter:WaitForChild("HumanoidRootPart");
+				newCharacter:WaitForChild("Humanoid");
+				startFly(newCharacter);
+			end
+		end);
+	end
+end, settings.Fly);
+local FlySpeed_Slider = library:CreateSlider(Fly_Item, "Speed", 1, 500, 50, function(Speed)
+	settings.Fly_Speed = Speed;
+end, settings.Fly_Speed);
+local WalkSpeed_Item = library:CreateItem(MoventWindow.Content, "WalkSpeed", true, function(toggled)
+	local FlatIdent_3AA8C = 0;
+	local WalkSpeed;
+	while true do
+		if (FlatIdent_3AA8C == 0) then
+			settings.WalkSpeed = toggled;
+			WalkSpeed = nil;
+			FlatIdent_3AA8C = 1;
+		end
+		if (FlatIdent_3AA8C == 1) then
+			function WalkSpeed()
+				local FlatIdent_26492 = 0;
+				local character;
+				local hrp;
+				local humanoid;
+				local cameraLook;
+				local cameraRight;
+				local flatLook;
+				local flatRight;
+				local moveDirection;
+				while true do
+					if (FlatIdent_26492 == 0) then
+						character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait();
+						hrp = character:WaitForChild("HumanoidRootPart");
+						humanoid = character:WaitForChild("Humanoid");
+						cameraLook = Camera.CFrame.LookVector;
+						FlatIdent_26492 = 1;
+					end
+					if (FlatIdent_26492 == 2) then
+						if UserInputService:IsKeyDown(Enum.KeyCode.W) then
+							moveDirection = moveDirection + flatLook;
+						end
+						if UserInputService:IsKeyDown(Enum.KeyCode.S) then
+							moveDirection = moveDirection - flatLook;
+						end
+						if UserInputService:IsKeyDown(Enum.KeyCode.A) then
+							moveDirection = moveDirection - flatRight;
+						end
+						if UserInputService:IsKeyDown(Enum.KeyCode.D) then
+							moveDirection = moveDirection + flatRight;
+						end
+						FlatIdent_26492 = 3;
+					end
+					if (FlatIdent_26492 == 1) then
+						cameraRight = Camera.CFrame.RightVector;
+						flatLook = Vector3.new(cameraLook.X, 0, cameraLook.Z).Unit;
+						flatRight = Vector3.new(cameraRight.X, 0, cameraRight.Z).Unit;
+						moveDirection = Vector3.new(0, 0, 0);
+						FlatIdent_26492 = 2;
+					end
+					if (FlatIdent_26492 == 3) then
+						if (moveDirection.Magnitude > 0) then
+							local FlatIdent_2D245 = 0;
+							local moveAmount;
+							local newPosition;
+							local rayOrigin;
+							local rayDirection;
+							local raycastParams;
+							local raycastResult;
+							while true do
+								if (FlatIdent_2D245 == 1) then
+									newPosition = hrp.Position + moveAmount;
+									rayOrigin = hrp.Position;
+									FlatIdent_2D245 = 2;
+								end
+								if (0 == FlatIdent_2D245) then
+									moveDirection = moveDirection.Unit;
+									moveAmount = moveDirection * settings.WalkSpeed_Speed * 0.016;
+									FlatIdent_2D245 = 1;
+								end
+								if (FlatIdent_2D245 == 3) then
+									raycastParams.FilterType = Enum.RaycastFilterType.Exclude;
+									raycastParams.FilterDescendantsInstances = {character};
+									FlatIdent_2D245 = 4;
+								end
+								if (FlatIdent_2D245 == 2) then
+									rayDirection = moveAmount;
+									raycastParams = RaycastParams.new();
+									FlatIdent_2D245 = 3;
+								end
+								if (FlatIdent_2D245 == 4) then
+									raycastResult = workspace:Raycast(rayOrigin, rayDirection, raycastParams);
+									if not raycastResult then
+										hrp.CFrame = CFrame.new(newPosition, newPosition + flatLook);
+									else
+										hrp.Velocity = Vector3.new(0, hrp.Velocity.Y, 0);
+									end
+									break;
+								end
+							end
+						else
+							hrp.Velocity = Vector3.new(0, hrp.Velocity.Y, 0);
+						end
+						if (settings.WalkSpeed_Mode == "BHop") then
+							if (humanoid:GetState() == Enum.HumanoidStateType.Running) then
+								humanoid:ChangeState(Enum.HumanoidStateType.Jumping);
+							else
+								local FlatIdent_20476 = 0;
+								local additionalSpeed;
+								while true do
+									if (FlatIdent_20476 == 0) then
+										additionalSpeed = Vector3.new(moveDirection.X, 0, moveDirection.Z) * settings.WalkSpeed_Speed * 0.02;
+										hrp.Velocity = hrp.Velocity + additionalSpeed;
+										break;
+									end
+								end
+							end
+						end
+						break;
+					end
+				end
+			end
+			while settings.WalkSpeed do
+				local FlatIdent_56024 = 0;
+				while true do
+					if (FlatIdent_56024 == 0) then
+						task.wait(0.01);
+						WalkSpeed();
+						break;
+					end
+				end
+			end
+			break;
+		end
+	end
+end, settings.WalkSpeed);
+local WalkSpeedSpeed_Slider = library:CreateSlider(WalkSpeed_Item, "Speed", 1, 200, 16, function(Speed)
+	settings.WalkSpeed_Speed = Speed;
+end, settings.WalkSpeed_Speed);
+local WalkSpeedMode_DownDrop = library:CreateDropdown(WalkSpeed_Item, "Mode", {"None","BHop"}, function(Mode)
+	settings.WalkSpeed_Mode = Mode;
+end, settings.WalkSpeed_Mode);
+local HightJump_Item = library:CreateItem(MoventWindow.Content, "HightJump", true, function(toggled)
+	settings.HightJump = toggled;
+end, settings.HightJump);
+local character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait();
+local humanoid = character:WaitForChild("Humanoid");
+local originalJump = humanoid.Jump;
+local function isOnGround(character)
+	local humanoid = character:FindFirstChildOfClass("Humanoid");
+	if not humanoid then
+		return false;
+	end
+	return (humanoid:GetState() == Enum.HumanoidStateType.Running) or (humanoid:GetState() == Enum.HumanoidStateType.RunningNoPhysics) or (humanoid:GetState() == Enum.HumanoidStateType.Landed);
+end
+local function modifyJump()
+	if isOnGround(character) then
+		local FlatIdent_11006 = 0;
+		local root;
+		while true do
+			if (FlatIdent_11006 == 0) then
+				root = character:WaitForChild("HumanoidRootPart");
+				root.Velocity = Vector3.new(root.Velocity.X, settings.HightJump_Power, root.Velocity.Z);
+				break;
+			end
+		end
+	end
+end
+UserInputService.JumpRequest:Connect(function()
+	if settings.HightJump then
+		modifyJump();
+	end
+end);
+LocalPlayer.CharacterAdded:Connect(function(newCharacter)
+	character = newCharacter;
+	humanoid = character:WaitForChild("Humanoid");
+	originalJump = humanoid.Jump;
+	if settings.HightJump then
+		humanoid.Jump = false;
+	end
+end);
+RunService.Heartbeat:Connect(function()
+	if (settings.HightJump and (humanoid.Jump ~= false)) then
+		humanoid.Jump = false;
+	end
+end);
+local HightJumpPower_Slider = library:CreateSlider(HightJump_Item, "Hight", 1, 200, 50, function(Power)
+	settings.HightJump_Power = Power;
+end, settings.HightJump_Power);
+local AirJump_Item = library:CreateItem(MoventWindow.Content, "AirJump", false, function(toggled)
+	settings.AirJump = toggled;
+end, settings.AirJump);
+local character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait();
+local humanoid = character:WaitForChild("Humanoid");
+UserInputService.JumpRequest:Connect(function()
+	character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait();
+	humanoid = character:WaitForChild("Humanoid");
+	if (settings.AirJump and humanoid) then
+		humanoid:ChangeState(Enum.HumanoidStateType.Jumping);
+	end
+end);
+local Gravity_Item = library:CreateItem(MoventWindow.Content, "Gravity", true, function(toggled)
+	settings.Gravity = toggled;
+	while settings.Gravity do
+		local FlatIdent_96219 = 0;
+		while true do
+			if (FlatIdent_96219 == 0) then
+				task.wait();
+				game.Workspace.Gravity = settings.Gravity_Value;
+				break;
+			end
+		end
+	end
+	game.Workspace.Gravity = LocalConfig.Gravity_DefaultValue;
+end, settings.Gravity);
+local Gravity_Slider = library:CreateSlider(Gravity_Item, "Gravity", -500, 500, 70, function(Value)
+	settings.Gravity_Value = Value;
+end, settings.Gravity_Value);
+local AutoWalk_Item = library:CreateItem(MoventWindow.Content, "Auto Walk", true, function(toggled)
+	local FlatIdent_5E338 = 0;
+	local character;
+	while true do
+		if (FlatIdent_5E338 == 0) then
+			settings.AutoWalk = toggled;
+			while settings.AutoWalk do
+				local character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait();
+				local humanoid = character:FindFirstChildOfClass("Humanoid");
+				local humanoidRootPart = character:WaitForChild("HumanoidRootPart");
+				if (humanoid and humanoidRootPart) then
+					local FlatIdent_4F808 = 0;
+					local currentVelocity;
+					while true do
+						if (FlatIdent_4F808 == 1) then
+							humanoidRootPart.Velocity = Vector3.new(humanoidRootPart.CFrame.LookVector.X * humanoid.WalkSpeed * settings.AutoWalk_Speed, currentVelocity.Y, humanoidRootPart.CFrame.LookVector.Z * humanoid.WalkSpeed * settings.AutoWalk_Speed);
+							break;
+						end
+						if (0 == FlatIdent_4F808) then
+							humanoid.PlatformStand = true;
+							currentVelocity = humanoidRootPart.Velocity;
+							FlatIdent_4F808 = 1;
+						end
+					end
+				end
+				task.wait();
+			end
+			FlatIdent_5E338 = 1;
+		end
+		if (FlatIdent_5E338 == 1) then
+			character = LocalPlayer.Character;
+			if character then
+				local FlatIdent_97786 = 0;
+				local humanoid;
+				while true do
+					if (FlatIdent_97786 == 0) then
+						humanoid = character:FindFirstChildOfClass("Humanoid");
+						if humanoid then
+							humanoid.PlatformStand = false;
+						end
+						break;
+					end
+				end
+			end
+			break;
+		end
+	end
+end, settings.AutoWalk);
+local AutoWalkSpeed_Slider = library:CreateSlider(AutoWalk_Item, "Speed", -80, 80, 10, function(Speed)
+	settings.AutoWalk_Speed = Speed * 0.1;
+end, settings.AutoWalk_Speed / 0.1);
+local Cofing_item = library:CreateItem(MiscWindow.Content, "Config", true, function()
+end, true);
+local Config_DynamicDropdown = library:CreateDynamicDropdown(Cofing_item, "Configs", function()
+	local FlatIdent_2876F = 0;
+	local jsonFiles;
+	local files;
+	while true do
+		if (FlatIdent_2876F == 1) then
+			for _, file in pairs(files) do
+				local fileName = file:match("([^/]+)%.json$");
+				if fileName then
+					table.insert(jsonFiles, fileName);
+				end
+			end
+			return jsonFiles;
+		end
+		if (FlatIdent_2876F == 0) then
+			jsonFiles = {};
+			files = listfiles("VapaV3/Configs");
+			FlatIdent_2876F = 1;
+		end
+	end
+end, function(Config)
+	local FlatIdent_8AD85 = 0;
+	while true do
+		if (FlatIdent_8AD85 == 0) then
+			if not isfolder("VapaV3") then
+				makefolder("VapaV3");
+			end
+			writefile("VapaV3/DefaultConfig.json", Config .. ".json");
+			break;
+		end
+	end
+end);
+local ConfigName_TextBox = library:CreateTextbox(Cofing_item, "Config Name", "default", function(ConfigName)
+	LocalConfig.LastConfig = ConfigName;
+end);
+local ConfigSave_Button = library:CreateButton(Cofing_item, "Save", function()
+	local FlatIdent_688B2 = 0;
+	local json;
+	while true do
+		if (FlatIdent_688B2 == 0) then
+			if not isfolder("VapaV3") then
+				makefolder("VapaV3");
+			end
+			if not isfolder("VapaV3/Configs") then
+				makefolder("VapaV3/Configs");
+			end
+			FlatIdent_688B2 = 1;
+		end
+		if (FlatIdent_688B2 == 1) then
+			json = game:GetService("HttpService"):JSONEncode(settings);
+			writefile("VapaV3/Configs/" .. (LocalConfig.LastConfig or "default") .. ".json", json);
+			FlatIdent_688B2 = 2;
+		end
+		if (2 == FlatIdent_688B2) then
+			if not isfolder("VapaV3") then
+				makefolder("VapaV3");
+			end
+			writefile("VapaV3/DefaultConfig.json", LocalConfig.LastConfig .. ".json");
+			break;
+		end
+	end
+end);
+MessageSystem:Info("Finished Loading", "Press <b><font color='rgb(10,255,10)'>Right Shift</font></b> to open GUI");
