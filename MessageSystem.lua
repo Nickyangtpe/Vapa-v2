@@ -1,11 +1,12 @@
--- MessageSystem.lua
--- 簡化版訊息系統
+-- ResponsiveMessageSystem.lua
+-- 自動適應螢幕大小的訊息系統
 
 local MessageSystem = {}
 
 -- 服務
 local Players = game:GetService("Players")
 local TweenService = game:GetService("TweenService")
+local GuiService = game:GetService("GuiService")
 
 -- 常數
 local MESSAGE_DURATION = 5 -- 秒
@@ -25,25 +26,44 @@ local MESSAGE_TYPES = {
 -- 變數
 local player = Players.LocalPlayer
 
--- 創建 ScreenGui
+-- 創建響應式 ScreenGui
 local function setupGui()
 	local screenGui = Instance.new("ScreenGui")
 	screenGui.Name = "MessageSystem"
 	screenGui.ResetOnSpawn = false
+	screenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+	screenGui.IgnoreGuiInset = true -- 忽略 GUI 插入，使其覆蓋整個螢幕
 	
+	-- 獲取螢幕尺寸
+	local viewportSize = workspace.CurrentCamera.ViewportSize
+	local insetTop = GuiService:GetGuiInset().Y
+	
+	-- 創建一個響應式容器
 	local messageContainer = Instance.new("Frame")
 	messageContainer.Name = "MessageContainer"
 	messageContainer.BackgroundTransparency = 1
-	messageContainer.Position = UDim2.new(1, -20, 0, 20)
-	messageContainer.Size = UDim2.new(0, 300, 1, -40)
+	messageContainer.Position = UDim2.new(1, -20, 0, 20 + insetTop) -- 考慮頂部插入
+	messageContainer.Size = UDim2.new(0, math.min(350, viewportSize.X * 0.3), 1, -40) -- 根據螢幕寬度調整大小
 	messageContainer.AnchorPoint = Vector2.new(1, 0)
 	messageContainer.Parent = screenGui
+	
+	-- 創建一個 UIScale 以便根據螢幕大小進行縮放
+	local uiScale = Instance.new("UIScale")
+	uiScale.Scale = math.clamp(viewportSize.X / 1920, 0.8, 1.2) -- 根據螢幕寬度調整縮放比例
+	uiScale.Parent = messageContainer
 	
 	local uiListLayout = Instance.new("UIListLayout")
 	uiListLayout.Padding = UDim.new(0, 10)
 	uiListLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
 	uiListLayout.VerticalAlignment = Enum.VerticalAlignment.Top
 	uiListLayout.Parent = messageContainer
+	
+	-- 監聽螢幕大小變化
+	workspace.CurrentCamera:GetPropertyChangedSignal("ViewportSize"):Connect(function()
+		local newViewportSize = workspace.CurrentCamera.ViewportSize
+		messageContainer.Size = UDim2.new(0, math.min(350, newViewportSize.X * 0.3), 1, -40)
+		uiScale.Scale = math.clamp(newViewportSize.X / 1920, 0.8, 1.2)
+	end)
 	
 	return screenGui, messageContainer
 end
@@ -123,10 +143,10 @@ local function createMessageFrame(title, message, messageType)
 	
 	-- 根據文本內容調整訊息高度
 	local textSize = game:GetService("TextService"):GetTextSize(
-		message,
+		message:gsub("<[^>]+>", ""), -- 移除富文本標籤以獲得正確的文本大小
 		14,
 		Enum.Font.Gotham,
-		Vector2.new(frame.Size.X.Offset - 24, 1000)
+		Vector2.new(frame.AbsoluteSize.X - 24, 1000)
 	)
 	messageLabel.Size = UDim2.new(1, -24, 0, textSize.Y + 10)
 	
@@ -153,6 +173,18 @@ local function createMessageFrame(title, message, messageType)
 	
 	-- 根據內容調整框架高度
 	frame.Size = UDim2.new(1, 0, 0, messageLabel.Position.Y.Offset + messageLabel.Size.Y.Offset + 12)
+	
+	-- 確保文本在框架大小變化時重新計算
+	frame:GetPropertyChangedSignal("AbsoluteSize"):Connect(function()
+		local newTextSize = game:GetService("TextService"):GetTextSize(
+			message:gsub("<[^>]+>", ""),
+			14,
+			Enum.Font.Gotham,
+			Vector2.new(frame.AbsoluteSize.X - 24, 1000)
+		)
+		messageLabel.Size = UDim2.new(1, -24, 0, newTextSize.Y + 10)
+		frame.Size = UDim2.new(1, 0, 0, messageLabel.Position.Y.Offset + messageLabel.Size.Y.Offset + 12)
+	end)
 	
 	return frame, progressBar
 end
@@ -213,6 +245,11 @@ end
 -- 顯示警告訊息
 function MessageSystem:Warning(title, message)
 	return self:Show(title, message, "WARNING")
+end
+
+-- 設置訊息持續時間
+function MessageSystem:SetDuration(duration)
+	MESSAGE_DURATION = duration
 end
 
 return MessageSystem
