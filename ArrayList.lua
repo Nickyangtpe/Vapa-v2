@@ -1,320 +1,322 @@
 -- ArrayList UI Library for Roblox
--- Customizable, animated UI list positioned in the top-right corner
+-- Customizable, Dynamic UI Library with Animation
 
-local ArrayListUI = {}
-ArrayListUI.__index = ArrayListUI
+local ArrayList = {}
+ArrayList.__index = ArrayList
 
--- Configuration
-local DEFAULT_CONFIG = {
-    Title = "ArrayList",
-    TitleColor = Color3.fromRGB(255, 50, 50), -- Red by default
-    ActiveColor = Color3.fromRGB(255, 50, 50), -- Red by default
-    InactiveColor = Color3.fromRGB(200, 200, 200), -- Light gray
-    BackgroundColor = Color3.fromRGB(30, 30, 30), -- Dark background
-    BackgroundTransparency = 0.2,
-    BorderColor = Color3.fromRGB(255, 50, 50), -- Red border
-    TextSize = 18,
-    Padding = 5,
-    AnimationSpeed = 0.3, -- Animation duration in seconds
-    Position = UDim2.new(1, -5, 0, 5), -- Top-right corner
-    AnchorPoint = Vector2.new(1, 0), -- Anchor to top-right
-}
+-- Services
+local RunService = game:GetService("RunService")
+local TweenService = game:GetService("TweenService")
+local Players = game:GetService("Players")
+local UserInputService = game:GetService("UserInputService")
 
--- Create a new ArrayList
-function ArrayListUI.new(config)
-    local self = setmetatable({}, ArrayListUI)
+-- Constants
+local SCREEN_GUI_NAME = "ArrayListGui"
+local DEFAULT_COLOR = Color3.fromRGB(255, 60, 60) -- Default red color similar to the image
+local GRAY_COLOR = Color3.fromRGB(200, 200, 200)
+local BACKGROUND_COLOR = Color3.fromRGB(30, 30, 30)
+local BACKGROUND_TRANSPARENCY = 0.3
+local TEXT_SIZE = 18
+local PADDING = 4
+local ANIMATION_TIME = 0.3
+local LINE_THICKNESS = 2
+
+-- Initialize the ArrayList
+function ArrayList.new(theme)
+    local self = setmetatable({}, ArrayList)
     
-    -- Merge default config with user config
-    self.config = {}
-    for key, value in pairs(DEFAULT_CONFIG) do
-        self.config[key] = (config and config[key] ~= nil) and config[key] or value
+    self.items = {}
+    self.theme = theme or "Red" -- Default theme
+    self.mainColor = DEFAULT_COLOR
+    
+    -- Set theme color
+    if theme == "Blue" then
+        self.mainColor = Color3.fromRGB(50, 100, 255)
+    elseif theme == "Green" then
+        self.mainColor = Color3.fromRGB(50, 255, 100)
+    elseif theme == "Purple" then
+        self.mainColor = Color3.fromRGB(150, 50, 255)
     end
     
-    -- Initialize items list
-    self.items = {}
-    self.activeItems = {}
+    -- Create ScreenGui
+    self.screenGui = Instance.new("ScreenGui")
+    self.screenGui.Name = SCREEN_GUI_NAME
+    self.screenGui.ResetOnSpawn = false
+    self.screenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
     
-    -- Create main UI
-    self:CreateUI()
+    -- Create main frame container
+    self.container = Instance.new("Frame")
+    self.container.Name = "ArrayListContainer"
+    self.container.BackgroundTransparency = 1
+    self.container.Size = UDim2.new(0, 200, 0, 500)
+    self.container.Position = UDim2.new(1, -210, 0, 10)
+    self.container.AnchorPoint = Vector2.new(0, 0)
+    self.container.Parent = self.screenGui
+    
+    -- Create accent line (vertical line on the right)
+    self.accentLine = Instance.new("Frame")
+    self.accentLine.Name = "AccentLine"
+    self.accentLine.BackgroundColor3 = self.mainColor
+    self.accentLine.BorderSizePixel = 0
+    self.accentLine.Position = UDim2.new(1, 0, 0, 0) 
+    self.accentLine.Size = UDim2.new(0, LINE_THICKNESS, 1, 0)
+    self.accentLine.AnchorPoint = Vector2.new(0, 0)
+    self.accentLine.Parent = self.container
+    
+    -- Parent the ScreenGui to the correct location
+    if game:GetService("RunService"):IsStudio() then
+        self.screenGui.Parent = Players.LocalPlayer:WaitForChild("PlayerGui")
+    else
+        self.screenGui.Parent = game:GetService("CoreGui")
+    end
     
     return self
 end
 
--- Create the UI elements
-function ArrayListUI:CreateUI()
-    local playerGui = game:GetService("Players").LocalPlayer:WaitForChild("PlayerGui")
-    
-    -- Create ScreenGui
-    self.screenGui = Instance.new("ScreenGui")
-    self.screenGui.Name = "ArrayListUI"
-    self.screenGui.ResetOnSpawn = false
-    self.screenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
-    self.screenGui.Parent = playerGui
-    
-    -- Create main frame
-    self.mainFrame = Instance.new("Frame")
-    self.mainFrame.Name = "MainFrame"
-    self.mainFrame.BackgroundColor3 = self.config.BackgroundColor
-    self.mainFrame.BackgroundTransparency = self.config.BackgroundTransparency
-    self.mainFrame.BorderSizePixel = 0
-    self.mainFrame.Position = self.config.Position
-    self.mainFrame.AnchorPoint = self.config.AnchorPoint
-    self.mainFrame.AutomaticSize = Enum.AutomaticSize.Y
-    self.mainFrame.Size = UDim2.new(0, 200, 0, 0)
-    self.mainFrame.Parent = self.screenGui
-    
-    -- Create title
-    self.titleLabel = Instance.new("TextLabel")
-    self.titleLabel.Name = "Title"
-    self.titleLabel.BackgroundTransparency = 1
-    self.titleLabel.Size = UDim2.new(1, 0, 0, self.config.TextSize + 10)
-    self.titleLabel.Font = Enum.Font.SourceSansBold
-    self.titleLabel.Text = self.config.Title
-    self.titleLabel.TextColor3 = self.config.TitleColor
-    self.titleLabel.TextSize = self.config.TextSize + 2
-    self.titleLabel.TextXAlignment = Enum.TextXAlignment.Left
-    self.titleLabel.Position = UDim2.new(0, self.config.Padding, 0, 0)
-    self.titleLabel.Size = UDim2.new(1, -self.config.Padding * 2, 0, self.config.TextSize + 10)
-    self.titleLabel.Parent = self.mainFrame
-    
-    -- Create list layout
-    self.listLayout = Instance.new("UIListLayout")
-    self.listLayout.SortOrder = Enum.SortOrder.LayoutOrder
-    self.listLayout.Padding = UDim.new(0, 2)
-    self.listLayout.Parent = self.mainFrame
-    
-    -- Create padding
-    self.uiPadding = Instance.new("UIPadding")
-    self.uiPadding.PaddingTop = UDim.new(0, self.config.Padding)
-    self.uiPadding.PaddingBottom = UDim.new(0, self.config.Padding)
-    self.uiPadding.PaddingLeft = UDim.new(0, self.config.Padding)
-    self.uiPadding.PaddingRight = UDim.new(0, self.config.Padding)
-    self.uiPadding.Parent = self.mainFrame
-    
-    -- Create border line
-    self.borderLine = Instance.new("Frame")
-    self.borderLine.Name = "BorderLine"
-    self.borderLine.BackgroundColor3 = self.config.BorderColor
-    self.borderLine.BorderSizePixel = 0
-    self.borderLine.Position = UDim2.new(1, 0, 0, 0)
-    self.borderLine.Size = UDim2.new(0, 2, 1, 0)
-    self.borderLine.Parent = self.mainFrame
-    
-    -- Create items container
-    self.itemsContainer = Instance.new("Frame")
-    self.itemsContainer.Name = "ItemsContainer"
-    self.itemsContainer.BackgroundTransparency = 1
-    self.itemsContainer.Position = UDim2.new(0, 0, 0, self.config.TextSize + 10)
-    self.itemsContainer.Size = UDim2.new(1, 0, 0, 0)
-    self.itemsContainer.AutomaticSize = Enum.AutomaticSize.Y
-    self.itemsContainer.Parent = self.mainFrame
-    
-    -- Create list layout for items
-    self.itemsLayout = Instance.new("UIListLayout")
-    self.itemsLayout.SortOrder = Enum.SortOrder.LayoutOrder
-    self.itemsLayout.Padding = UDim.new(0, 2)
-    self.itemsLayout.Parent = self.itemsContainer
-end
-
--- Add a new item to the list
-function ArrayListUI:AddItem(name, active, callback)
-    if self.items[name] then
-        return self.items[name]
+-- Add new item to the ArrayList
+function ArrayList:AddItem(name, state, customColor)
+    -- Check if item already exists
+    for _, item in ipairs(self.items) do
+        if item.name == name then
+            return item -- Return existing item
+        end
     end
-    
-    local item = {}
-    item.name = name
-    item.active = active or false
-    item.callback = callback
     
     -- Create item frame
-    item.frame = Instance.new("TextButton")
-    item.frame.Name = name
-    item.frame.BackgroundTransparency = 1
-    item.frame.Size = UDim2.new(1, 0, 0, self.config.TextSize + 4)
-    item.frame.Text = ""
-    item.frame.AutoButtonColor = false
+    local itemFrame = Instance.new("Frame")
+    itemFrame.Name = name .. "Frame"
+    itemFrame.BackgroundColor3 = BACKGROUND_COLOR
+    itemFrame.BackgroundTransparency = BACKGROUND_TRANSPARENCY
+    itemFrame.BorderSizePixel = 0
+    itemFrame.Size = UDim2.new(1, -LINE_THICKNESS, 0, TEXT_SIZE + PADDING * 2)
+    itemFrame.Position = UDim2.new(0, 0, 0, 0) -- Will be updated in UpdatePositions
+    itemFrame.Parent = self.container
     
-    -- Create item text
-    item.text = Instance.new("TextLabel")
-    item.text.BackgroundTransparency = 1
-    item.text.Size = UDim2.new(1, -self.config.Padding, 1, 0)
-    item.text.Font = Enum.Font.SourceSans
-    item.text.Text = name
-    item.text.TextSize = self.config.TextSize
-    item.text.TextXAlignment = Enum.TextXAlignment.Left
-    item.text.TextColor3 = item.active and self.config.ActiveColor or self.config.InactiveColor
-    item.text.Parent = item.frame
+    -- Create item name text
+    local nameText = Instance.new("TextLabel")
+    nameText.Name = "NameText"
+    nameText.Text = name
+    nameText.Font = Enum.Font.SourceSansBold
+    nameText.TextSize = TEXT_SIZE
+    nameText.TextColor3 = customColor or self.mainColor
+    nameText.BackgroundTransparency = 1
+    nameText.Size = UDim2.new(0.7, 0, 1, 0)
+    nameText.Position = UDim2.new(0, PADDING, 0, 0)
+    nameText.TextXAlignment = Enum.TextXAlignment.Left
+    nameText.Parent = itemFrame
     
-    -- Add click functionality if callback provided
-    if callback then
-        item.frame.MouseButton1Click:Connect(function()
-            item.active = not item.active
-            self:UpdateItem(name, item.active)
-            if callback then
-                callback(item.active)
-            end
-        end)
-    end
+    -- Create state text
+    local stateText = Instance.new("TextLabel")
+    stateText.Name = "StateText"
+    stateText.Text = state or ""
+    stateText.Font = Enum.Font.SourceSans
+    stateText.TextSize = TEXT_SIZE
+    stateText.TextColor3 = GRAY_COLOR
+    stateText.BackgroundTransparency = 1
+    stateText.Size = UDim2.new(0.3, -PADDING, 1, 0)
+    stateText.Position = UDim2.new(0.7, 0, 0, 0)
+    stateText.TextXAlignment = Enum.TextXAlignment.Right
+    stateText.Parent = itemFrame
     
-    -- Set initial state
-    self:UpdateItem(name, item.active, true)
+    -- Apply initial transparency for animation
+    itemFrame.BackgroundTransparency = 1
+    nameText.TextTransparency = 1
+    stateText.TextTransparency = 1
+    
+    -- Create item data
+    local item = {
+        name = name,
+        state = state or "",
+        frame = itemFrame,
+        nameLabel = nameText,
+        stateLabel = stateText,
+        active = true,
+        color = customColor or self.mainColor
+    }
     
     -- Add to items list
-    self.items[name] = item
+    table.insert(self.items, item)
     
-    -- Add to container with animation
-    item.frame.Parent = self.itemsContainer
-    item.frame.Size = UDim2.new(1, 0, 0, 0)
-    item.frame.TextTransparency = 1
+    -- Sort and update positions
+    self:SortItems()
+    self:UpdatePositions()
     
-    -- Animation
-    local tweenInfo = TweenInfo.new(self.config.AnimationSpeed, Enum.EasingStyle.Quart, Enum.EasingDirection.Out)
-    local tween = game:GetService("TweenService"):Create(
-        item.frame,
-        tweenInfo,
-        {Size = UDim2.new(1, 0, 0, self.config.TextSize + 4), TextTransparency = 0}
-    )
-    tween:Play()
+    -- Animate in
+    self:AnimateItemIn(item)
     
     return item
 end
 
--- Update an item's state
-function ArrayListUI:UpdateItem(name, active, noAnimation)
-    local item = self.items[name]
-    if not item then return end
-    
-    item.active = active
-    
-    -- Update text color
-    local targetColor = active and self.config.ActiveColor or self.config.InactiveColor
-    
-    if noAnimation then
-        item.text.TextColor3 = targetColor
-    else
-        local tweenInfo = TweenInfo.new(self.config.AnimationSpeed, Enum.EasingStyle.Quart, Enum.EasingDirection.Out)
-        local tween = game:GetService("TweenService"):Create(
-            item.text,
-            tweenInfo,
-            {TextColor3 = targetColor}
-        )
-        tween:Play()
-    end
-    
-    -- Update active items list for sorting
-    if active then
-        if not table.find(self.activeItems, name) then
-            table.insert(self.activeItems, name)
-        end
-    else
-        local index = table.find(self.activeItems, name)
-        if index then
-            table.remove(self.activeItems, index)
+-- Update an existing item
+function ArrayList:UpdateItem(name, newState, newColor)
+    for _, item in ipairs(self.items) do
+        if item.name == name then
+            -- Update state if provided
+            if newState ~= nil then
+                item.state = newState
+                item.stateLabel.Text = newState
+            end
+            
+            -- Update color if provided
+            if newColor then
+                item.color = newColor
+                item.nameLabel.TextColor3 = newColor
+            end
+            
+            -- Resort and update positions
+            self:SortItems()
+            self:UpdatePositions()
+            
+            return item
         end
     end
     
-    -- Sort items
-    self:SortItems()
+    -- If item doesn't exist, create it
+    return self:AddItem(name, newState, newColor)
 end
 
--- Remove an item from the list
-function ArrayListUI:RemoveItem(name)
-    local item = self.items[name]
-    if not item then return end
+-- Remove an item from the ArrayList
+function ArrayList:RemoveItem(name)
+    for i, item in ipairs(self.items) do
+        if item.name == name then
+            -- Animate out
+            self:AnimateItemOut(item, function()
+                -- Remove from items list
+                table.remove(self.items, i)
+                -- Update positions
+                self:UpdatePositions()
+            end)
+            return true
+        end
+    end
+    return false
+end
+
+-- Sort items alphabetically
+function ArrayList:SortItems()
+    table.sort(self.items, function(a, b)
+        return a.name < b.name
+    end)
+end
+
+-- Update positions of all items
+function ArrayList:UpdatePositions()
+    local yOffset = 0
     
-    -- Animation
-    local tweenInfo = TweenInfo.new(self.config.AnimationSpeed, Enum.EasingStyle.Quart, Enum.EasingDirection.Out)
-    local tween = game:GetService("TweenService"):Create(
+    for i, item in ipairs(self.items) do
+        if item.active then
+            -- Create tween to move item to new position
+            local newPosition = UDim2.new(0, 0, 0, yOffset)
+            
+            if item.frame.Position ~= newPosition then
+                local tween = TweenService:Create(
+                    item.frame,
+                    TweenInfo.new(ANIMATION_TIME, Enum.EasingStyle.Quart, Enum.EasingDirection.Out),
+                    {Position = newPosition}
+                )
+                tween:Play()
+            else
+                item.frame.Position = newPosition
+            end
+            
+            yOffset = yOffset + item.frame.Size.Y.Offset
+        end
+    end
+    
+    -- Update container size
+    self.container.Size = UDim2.new(0, 200, 0, math.max(10, yOffset))
+end
+
+-- Animation for new items
+function ArrayList:AnimateItemIn(item)
+    item.frame.BackgroundTransparency = 1
+    item.nameLabel.TextTransparency = 1
+    item.stateLabel.TextTransparency = 1
+    
+    local tweenInfo = TweenInfo.new(ANIMATION_TIME, Enum.EasingStyle.Quart, Enum.EasingDirection.Out)
+    
+    -- Background fade in
+    local bgTween = TweenService:Create(
         item.frame,
         tweenInfo,
-        {Size = UDim2.new(1, 0, 0, 0), TextTransparency = 1}
+        {BackgroundTransparency = BACKGROUND_TRANSPARENCY}
     )
     
-    tween.Completed:Connect(function()
+    -- Text fade in
+    local nameTween = TweenService:Create(
+        item.nameLabel,
+        tweenInfo,
+        {TextTransparency = 0}
+    )
+    
+    local stateTween = TweenService:Create(
+        item.stateLabel,
+        tweenInfo,
+        {TextTransparency = 0}
+    )
+    
+    bgTween:Play()
+    nameTween:Play()
+    stateTween:Play()
+end
+
+-- Animation for removing items
+function ArrayList:AnimateItemOut(item, callback)
+    local tweenInfo = TweenInfo.new(ANIMATION_TIME, Enum.EasingStyle.Quart, Enum.EasingDirection.In)
+    
+    -- Background fade out
+    local bgTween = TweenService:Create(
+        item.frame,
+        tweenInfo,
+        {BackgroundTransparency = 1}
+    )
+    
+    -- Text fade out
+    local nameTween = TweenService:Create(
+        item.nameLabel,
+        tweenInfo,
+        {TextTransparency = 1}
+    )
+    
+    local stateTween = TweenService:Create(
+        item.stateLabel,
+        tweenInfo,
+        {TextTransparency = 1}
+    )
+    
+    -- Connect to the Completed event of the last tween
+    stateTween.Completed:Connect(function()
         item.frame:Destroy()
-        self.items[name] = nil
-        
-        -- Remove from active items
-        local index = table.find(self.activeItems, name)
-        if index then
-            table.remove(self.activeItems, index)
-        end
+        if callback then callback() end
     end)
     
-    tween:Play()
+    bgTween:Play()
+    nameTween:Play()
+    stateTween:Play()
 end
 
--- Sort items (active items first)
-function ArrayListUI:SortItems()
-    local order = 0
+-- Change theme color
+function ArrayList:SetTheme(color)
+    self.mainColor = color
+    self.accentLine.BackgroundColor3 = color
     
-    -- First, active items
-    for _, name in ipairs(self.activeItems) do
-        local item = self.items[name]
-        if item then
-            item.frame.LayoutOrder = order
-            order = order + 1
-        end
-    end
-    
-    -- Then, inactive items
-    for name, item in pairs(self.items) do
-        if not item.active then
-            item.frame.LayoutOrder = order
-            order = order + 1
+    -- Update all item colors if they are using the default color
+    for _, item in ipairs(self.items) do
+        if item.color == self.mainColor then
+            item.nameLabel.TextColor3 = color
+            item.color = color
         end
     end
 end
 
--- Set the color theme
-function ArrayListUI:SetTheme(activeColor, inactiveColor, backgroundColor, borderColor)
-    self.config.ActiveColor = activeColor or self.config.ActiveColor
-    self.config.InactiveColor = inactiveColor or self.config.InactiveColor
-    self.config.BackgroundColor = backgroundColor or self.config.BackgroundColor
-    self.config.BorderColor = borderColor or self.config.BorderColor
-    
-    -- Update UI elements
-    self.mainFrame.BackgroundColor3 = self.config.BackgroundColor
-    self.borderLine.BackgroundColor3 = self.config.BorderColor
-    self.titleLabel.TextColor3 = self.config.ActiveColor
-    
-    -- Update all items
-    for name, item in pairs(self.items) do
-        self:UpdateItem(name, item.active, true)
-    end
+-- Toggle visibility
+function ArrayList:SetVisible(visible)
+    self.container.Visible = visible
 end
 
--- Example usage function
-local function CreateExampleArrayList()
-    local arrayList = ArrayListUI.new({
-        Title = "Features",
-        ActiveColor = Color3.fromRGB(255, 50, 50),  -- Red
-        InactiveColor = Color3.fromRGB(200, 200, 200),  -- Light gray
-        BackgroundColor = Color3.fromRGB(30, 30, 30),  -- Dark background
-        BorderColor = Color3.fromRGB(255, 50, 50),  -- Red border
-    })
-    
-    -- Add items
-    arrayList:AddItem("FakeLag", true, function(active) print("FakeLag:", active) end)
-    arrayList:AddItem("Dynamic", false, function(active) print("Dynamic:", active) end)
-    arrayList:AddItem("NoItemRelease", true, function(active) print("NoItemRelease:", active) end)
-    arrayList:AddItem("Velocity", false, function(active) print("Velocity:", active) end)
-    arrayList:AddItem("Normal", false, function(active) print("Normal:", active) end)
-    arrayList:AddItem("Trajectories", true, function(active) print("Trajectories:", active) end)
-    arrayList:AddItem("AutoClicker", true, function(active) print("AutoClicker:", active) end)
-    arrayList:AddItem("SilentAura", true, function(active) print("SilentAura:", active) end)
-    arrayList:AddItem("Indicators", true, function(active) print("Indicators:", active) end)
-    arrayList:AddItem("AntiBot", true, function(active) print("AntiBot:", active) end)
-    arrayList:AddItem("Reach", true, function(active) print("Reach:", active) end)
-    arrayList:AddItem("Sprint", true, function(active) print("Sprint:", active) end)
-    arrayList:AddItem("ESP", true, function(active) print("ESP:", active) end)
-    
-    return arrayList
+-- Destroy the ArrayList
+function ArrayList:Destroy()
+    self.screenGui:Destroy()
 end
 
--- Public API
-return {
-    new = ArrayListUI.new,
-    createExample = CreateExampleArrayList
-}
+return ArrayList
