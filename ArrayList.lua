@@ -1,5 +1,6 @@
 -- ArrayList UI Library for Roblox
 -- Positioned in top-right corner with vertical line design
+-- Each item has its own width based on content
 
 local ArrayListUI = {}
 local ArrayListItems = {}
@@ -35,24 +36,12 @@ local function createMainFrame()
     
     local MainFrame = Instance.new("Frame")
     MainFrame.Name = "MainContainer"
-    MainFrame.BackgroundColor3 = config.background.color
-    MainFrame.BackgroundTransparency = config.background.transparency
+    MainFrame.BackgroundTransparency = 1 -- Transparent main container
     MainFrame.BorderSizePixel = 0
     MainFrame.Position = config.position
-    MainFrame.Size = UDim2.new(0, 200, 0, 0) -- Will auto-resize
+    MainFrame.Size = UDim2.new(0, 0, 0, 0) -- Will auto-resize
     MainFrame.AnchorPoint = Vector2.new(1, 0) -- Anchor to top-right
     MainFrame.Parent = ScreenGui
-    
-    -- Create the vertical line on the right
-    local verticalLine = Instance.new("Frame")
-    verticalLine.Name = "VerticalLine"
-    verticalLine.BackgroundColor3 = config.verticalLine.color
-    verticalLine.BorderSizePixel = 0
-    verticalLine.Position = UDim2.new(1, 0, 0, 0) 
-    verticalLine.Size = UDim2.new(0, config.verticalLine.width, 1, 0)
-    verticalLine.AnchorPoint = Vector2.new(0, 0)
-    verticalLine.ZIndex = 2
-    verticalLine.Parent = MainFrame
     
     return MainFrame
 end
@@ -64,20 +53,38 @@ function ArrayListUI:Init()
     return self
 end
 
+-- Calculate text width
+local function getTextWidth(text, textSize, font)
+    return game:GetService("TextService"):GetTextSize(
+        text, 
+        textSize, 
+        font, 
+        Vector2.new(1000, 100)
+    ).X
+end
+
 -- Add a new item to the ArrayList with animation
 function ArrayListUI:AddItem(name, value, isActive)
     local itemColor = isActive and config.activeColor or config.inactiveColor
     local itemId = #self.items + 1
+    local displayText = value and (name .. " " .. value) or name
     
-    -- Create item container
+    -- Calculate width based on text
+    local textWidth = getTextWidth(displayText, config.textSize, config.font)
+    local itemWidth = textWidth + (config.padding * 2) + config.verticalLine.width
+    
+    -- Create item container with its own background
     local itemFrame = Instance.new("Frame")
     itemFrame.Name = "Item_" .. itemId
-    itemFrame.BackgroundTransparency = 1
-    itemFrame.Size = UDim2.new(1, 0, 0, config.textSize + 4) -- Height based on text size
-    itemFrame.Position = UDim2.new(1, 0, 0, self:GetTotalHeight()) -- Start from right (for animation)
+    itemFrame.BackgroundColor3 = config.background.color
+    itemFrame.BackgroundTransparency = config.background.transparency
+    itemFrame.BorderSizePixel = 0
+    itemFrame.Size = UDim2.new(0, itemWidth, 0, config.textSize + 4) -- Height based on text size, width based on content
+    itemFrame.Position = UDim2.new(1, 0, 0, self:GetItemPosition(itemId)) -- Start from right (for animation)
+    itemFrame.AnchorPoint = Vector2.new(1, 0) -- Anchor to right
     itemFrame.Parent = self.mainFrame
     
-    -- Create single text label for the item (right-aligned)
+    -- Create text label for the item (right-aligned)
     local textLabel = Instance.new("TextLabel")
     textLabel.Name = "Text"
     textLabel.BackgroundTransparency = 1
@@ -86,48 +93,45 @@ function ArrayListUI:AddItem(name, value, isActive)
     textLabel.Font = config.font
     textLabel.TextSize = config.textSize
     textLabel.TextColor3 = itemColor
-    textLabel.Text = value and (name .. " " .. value) or name -- Support for no value
+    textLabel.Text = displayText
     textLabel.TextXAlignment = Enum.TextXAlignment.Right -- Right-aligned text
     textLabel.Parent = itemFrame
     
-    -- Calculate width based on text
-    local textWidth = game:GetService("TextService"):GetTextSize(
-        textLabel.Text, 
-        config.textSize, 
-        config.font, 
-        Vector2.new(1000, 100)
-    ).X
-    
-    local targetWidth = textWidth + (config.padding * 2) + config.verticalLine.width
-    
-    -- Update main frame width if needed
-    if targetWidth > self.mainFrame.Size.X.Offset then
-        self.mainFrame.Size = UDim2.new(0, targetWidth, self.mainFrame.Size.Y)
-    end
+    -- Create the vertical line on the right of each item
+    local verticalLine = Instance.new("Frame")
+    verticalLine.Name = "VerticalLine"
+    verticalLine.BackgroundColor3 = config.verticalLine.color
+    verticalLine.BorderSizePixel = 0
+    verticalLine.Position = UDim2.new(1, 0, 0, 0) 
+    verticalLine.Size = UDim2.new(0, config.verticalLine.width, 1, 0)
+    verticalLine.AnchorPoint = Vector2.new(0, 0)
+    verticalLine.ZIndex = 2
+    verticalLine.Parent = itemFrame
     
     -- Store item data
     local itemData = {
         id = itemId,
         frame = itemFrame,
         text = textLabel,
+        line = verticalLine,
         valueText = value,
-        isActive = isActive
+        isActive = isActive,
+        width = itemWidth
     }
     
     table.insert(self.items, itemData)
     ArrayListItems[itemId] = itemData
     
-    -- Update vertical line and frame height
+    -- Update frame height
     self:UpdateFrameHeight()
     
     -- Enhanced animation: slide in from right and fade in
     itemFrame.Position = UDim2.new(1, 0, 0, self:GetItemPosition(itemId))
-    itemFrame.BackgroundTransparency = 1
     textLabel.TextTransparency = 1
     
     -- Slide animation
     itemFrame:TweenPosition(
-        UDim2.new(0, 0, 0, self:GetItemPosition(itemId)), 
+        UDim2.new(1, -itemWidth, 0, self:GetItemPosition(itemId)), 
         config.animationDirection, 
         config.animationStyle, 
         config.animationTime, 
@@ -166,7 +170,7 @@ function ArrayListUI:RemoveItem(itemId)
         
         fadeOutTween:Play()
         
-        -- Slide out animation
+        -- Slide out animation to the right
         item.frame:TweenPosition(
             UDim2.new(1, 0, 0, item.frame.Position.Y.Offset), 
             config.animationDirection, 
@@ -185,7 +189,7 @@ function ArrayListUI:RemoveItem(itemId)
         for i = itemIndex, #self.items do
             local currentItem = self.items[i]
             currentItem.frame:TweenPosition(
-                UDim2.new(0, 0, 0, self:GetItemPosition(i)),
+                UDim2.new(1, -currentItem.width, 0, self:GetItemPosition(i)),
                 config.animationDirection,
                 config.animationStyle,
                 config.animationTime,
@@ -244,18 +248,8 @@ end
 function ArrayListUI:UpdateFrameHeight()
     local totalHeight = self:GetTotalHeight()
     
-    -- Animate height change
-    game:GetService("TweenService"):Create(
-        self.mainFrame, 
-        TweenInfo.new(config.animationTime, config.animationStyle, config.animationDirection), 
-        {Size = UDim2.new(0, self.mainFrame.Size.X.Offset, 0, totalHeight)}
-    ):Play()
-    
-    -- Update vertical line height
-    local verticalLine = self.mainFrame:FindFirstChild("VerticalLine")
-    if verticalLine then
-        verticalLine.Size = UDim2.new(0, config.verticalLine.width, 1, 0)
-    end
+    -- Update main frame size
+    self.mainFrame.Size = UDim2.new(0, 0, 0, totalHeight)
 end
 
 -- Get position for item at index
@@ -279,26 +273,23 @@ function ArrayListUI:UpdateConfig(newConfig)
         end
     end
     
-    -- Update vertical line
-    local verticalLine = self.mainFrame:FindFirstChild("VerticalLine")
-    if verticalLine then
-        verticalLine.BackgroundColor3 = config.verticalLine.color
-        verticalLine.Size = UDim2.new(0, config.verticalLine.width, 1, 0)
-    end
-    
-    -- Update main frame with animation
-    game:GetService("TweenService"):Create(
-        self.mainFrame, 
-        TweenInfo.new(config.animationTime, config.animationStyle, config.animationDirection), 
-        {
-            BackgroundColor3 = config.background.color,
-            BackgroundTransparency = config.background.transparency,
-            Position = config.position
-        }
-    ):Play()
-    
     -- Update all items
-    for _, item in ipairs(self.items) do
+    for i, item in ipairs(self.items) do
+        -- Update vertical line
+        item.line.BackgroundColor3 = config.verticalLine.color
+        item.line.Size = UDim2.new(0, config.verticalLine.width, 1, 0)
+        
+        -- Update background
+        item.frame.BackgroundColor3 = config.background.color
+        item.frame.BackgroundTransparency = config.background.transparency
+        
+        -- Recalculate width based on text
+        local displayText = item.valueText and (item.text.Text) or item.text.Text
+        local textWidth = getTextWidth(displayText, config.textSize, config.font)
+        local itemWidth = textWidth + (config.padding * 2) + config.verticalLine.width
+        item.width = itemWidth
+        
+        -- Update text properties
         item.text.Font = config.font
         item.text.TextSize = config.textSize
         item.text.TextColor3 = item.isActive and config.activeColor or config.inactiveColor
@@ -313,13 +304,16 @@ function ArrayListUI:UpdateConfig(newConfig)
             }
         ):Play()
         
-        item.frame.Size = UDim2.new(1, 0, 0, config.textSize + 4)
-    end
-    
-    -- Reposition items with animation
-    for i, item in ipairs(self.items) do
+        -- Update frame size
+        game:GetService("TweenService"):Create(
+            item.frame, 
+            TweenInfo.new(config.animationTime, config.animationStyle, config.animationDirection), 
+            {Size = UDim2.new(0, itemWidth, 0, config.textSize + 4)}
+        ):Play()
+        
+        -- Reposition item
         item.frame:TweenPosition(
-            UDim2.new(0, 0, 0, self:GetItemPosition(i)),
+            UDim2.new(1, -itemWidth, 0, self:GetItemPosition(i)),
             config.animationDirection,
             config.animationStyle,
             config.animationTime,
@@ -327,13 +321,22 @@ function ArrayListUI:UpdateConfig(newConfig)
         )
     end
     
+    -- Update main frame position
+    self.mainFrame:TweenPosition(
+        config.position,
+        config.animationDirection,
+        config.animationStyle,
+        config.animationTime,
+        true
+    )
+    
     -- Update frame height
     self:UpdateFrameHeight()
 end
 
 -- Clear all items with animation
 function ArrayListUI:ClearAll()
-    -- Animate all items sliding out
+    -- Animate all items sliding out to the right
     for i, item in ipairs(self.items) do
         -- Fade out
         game:GetService("TweenService"):Create(
@@ -364,7 +367,7 @@ function ArrayListUI:ClearAll()
     task.delay(config.animationTime + 0.5, function()
         self.items = {}
         ArrayListItems = {}
-        self.mainFrame.Size = UDim2.new(0, self.mainFrame.Size.X.Offset, 0, 0)
+        self.mainFrame.Size = UDim2.new(0, 0, 0, 0)
     end)
 end
 
