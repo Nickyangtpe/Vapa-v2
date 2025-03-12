@@ -20,7 +20,7 @@ local config = {
         color = Color3.fromRGB(255, 85, 85) -- Red vertical line
     },
     padding = 8, -- Horizontal padding
-    animationTime = 0.5 -- Duration of animation
+    itemAnimationDuration = 0.3 -- Duration for animation
 }
 
 -- Create main UI container
@@ -46,7 +46,7 @@ local function createMainFrame()
     verticalLine.Name = "VerticalLine"
     verticalLine.BackgroundColor3 = config.verticalLine.color
     verticalLine.BorderSizePixel = 0
-    verticalLine.Position = UDim2.new(1, 0, 0, 0) 
+    verticalLine.Position = UDim2.new(1, 0, 0, 0)
     verticalLine.Size = UDim2.new(0, config.verticalLine.width, 1, 0)
     verticalLine.AnchorPoint = Vector2.new(0, 0)
     verticalLine.ZIndex = 2
@@ -62,7 +62,7 @@ function ArrayListUI:Init()
     return self
 end
 
--- Add a new item to the ArrayList with animation
+-- Add a new item to the ArrayList
 function ArrayListUI:AddItem(name, value, isActive)
     local itemColor = isActive and config.activeColor or config.inactiveColor
     local itemId = #self.items + 1
@@ -76,47 +76,28 @@ function ArrayListUI:AddItem(name, value, isActive)
     itemFrame.Position = UDim2.new(0, 0, 0, self:GetTotalHeight())
     itemFrame.Parent = self.mainFrame
     
-    -- Create text labels for the name and value
-    local nameLabel = Instance.new("TextLabel")
-    nameLabel.Name = "Name"
-    nameLabel.BackgroundTransparency = 1
-    nameLabel.Size = UDim2.new(0.5, -config.padding, 1, 0)
-    nameLabel.Position = UDim2.new(0, config.padding, 0, 0)
-    nameLabel.Font = config.font
-    nameLabel.TextSize = config.textSize
-    nameLabel.TextColor3 = itemColor
-    nameLabel.Text = name
-    nameLabel.TextXAlignment = Enum.TextXAlignment.Left
-    nameLabel.Parent = itemFrame
-    
-    local valueLabel = Instance.new("TextLabel")
-    valueLabel.Name = "Value"
-    valueLabel.BackgroundTransparency = 1
-    valueLabel.Size = UDim2.new(0.5, -config.padding, 1, 0)
-    valueLabel.Position = UDim2.new(0.5, config.padding, 0, 0)
-    valueLabel.Font = config.font
-    valueLabel.TextSize = config.textSize
-    valueLabel.TextColor3 = Color3.fromRGB(120, 120, 120) -- Darker for the value
-    valueLabel.Text = value or "N/A"
-    valueLabel.TextXAlignment = Enum.TextXAlignment.Right
-    valueLabel.Parent = itemFrame
+    -- Create text label
+    local textLabel = Instance.new("TextLabel")
+    textLabel.Name = "Text"
+    textLabel.BackgroundTransparency = 1
+    textLabel.Size = UDim2.new(1, -config.padding, 1, 0)
+    textLabel.Position = UDim2.new(0, config.padding, 0, 0)
+    textLabel.Font = config.font
+    textLabel.TextSize = config.textSize
+    textLabel.TextColor3 = itemColor
+    textLabel.Text = displayText
+    textLabel.TextXAlignment = Enum.TextXAlignment.Right -- Align text to the right
+    textLabel.Parent = itemFrame
     
     -- Calculate width based on text
-    local nameWidth = game:GetService("TextService"):GetTextSize(
-        name, 
+    local textWidth = game:GetService("TextService"):GetTextSize(
+        displayText, 
         config.textSize, 
         config.font, 
         Vector2.new(1000, 100)
     ).X
     
-    local valueWidth = game:GetService("TextService"):GetTextSize(
-        valueLabel.Text, 
-        config.textSize, 
-        config.font, 
-        Vector2.new(1000, 100)
-    ).X
-    
-    local targetWidth = nameWidth + valueWidth + (config.padding * 3) + config.verticalLine.width
+    local targetWidth = textWidth + (config.padding * 2) + config.verticalLine.width
     
     -- Update main frame width if needed
     if targetWidth > self.mainFrame.Size.X.Offset then
@@ -127,9 +108,9 @@ function ArrayListUI:AddItem(name, value, isActive)
     local itemData = {
         id = itemId,
         frame = itemFrame,
-        name = nameLabel,
-        value = valueLabel,
-        valueText = value,
+        text = textLabel,
+        name = name,
+        value = value,
         isActive = isActive
     }
     
@@ -139,45 +120,12 @@ function ArrayListUI:AddItem(name, value, isActive)
     -- Update vertical line and frame height
     self:UpdateFrameHeight()
     
-    -- Animate the item appearing
-    itemFrame.Position = UDim2.new(0, 0, 0, self:GetTotalHeight())
-    itemFrame:TweenPosition(UDim2.new(0, 0, 0, self:GetItemPosition(itemId)), Enum.EasingDirection.Out, Enum.EasingStyle.Quad, config.animationTime, true)
+    -- Animate item addition
+    itemFrame.Position = UDim2.new(0, 0, 0, self:GetTotalHeight() - itemFrame.Size.Y.Offset)
+    local tween = game:GetService("TweenService"):Create(itemFrame, TweenInfo.new(config.itemAnimationDuration, Enum.EasingStyle.Sine, Enum.EasingDirection.Out), {Position = UDim2.new(0, 0, 0, self:GetTotalHeight())})
+    tween:Play()
     
     return itemId
-end
-
--- Remove an item with animation
-function ArrayListUI:RemoveItem(itemId)
-    local itemIndex = nil
-    for i, item in ipairs(self.items) do
-        if item.id == itemId then
-            itemIndex = i
-            break
-        end
-    end
-    
-    if itemIndex then
-        local item = self.items[itemIndex]
-        -- Animate the item disappearing
-        item.frame:TweenPosition(UDim2.new(0, 0, 0, -item.frame.Size.Y.Offset), Enum.EasingDirection.In, Enum.EasingStyle.Quad, config.animationTime, true, function()
-            item.frame:Destroy()
-        end)
-        
-        table.remove(self.items, itemIndex)
-        ArrayListItems[itemId] = nil
-        
-        -- Reposition all items after the removed one
-        for i = itemIndex, #self.items do
-            local currentItem = self.items[i]
-            currentItem.frame.Position = UDim2.new(0, 0, 0, self:GetItemPosition(i))
-        end
-        
-        -- Update frame height
-        self:UpdateFrameHeight()
-        return true
-    end
-    
-    return false
 end
 
 -- Get the total height of all items
@@ -201,6 +149,44 @@ function ArrayListUI:UpdateFrameHeight()
     end
 end
 
+-- Remove an item by ID with animation
+function ArrayListUI:RemoveItem(itemId)
+    local itemIndex = nil
+    for i, item in ipairs(self.items) do
+        if item.id == itemId then
+            itemIndex = i
+            break
+        end
+    end
+    
+    if itemIndex then
+        local item = self.items[itemIndex]
+        
+        -- Animate item removal
+        local tween = game:GetService("TweenService"):Create(item.frame, TweenInfo.new(config.itemAnimationDuration, Enum.EasingStyle.Sine, Enum.EasingDirection.Out), {Position = UDim2.new(0, 0, 0, -item.frame.Size.Y.Offset)})
+        tween:Play()
+        
+        tween.Completed:Connect(function()
+            item.frame:Destroy()
+            table.remove(self.items, itemIndex)
+            ArrayListItems[itemId] = nil
+            
+            -- Reposition all items after the removed one
+            for i = itemIndex, #self.items do
+                local currentItem = self.items[i]
+                currentItem.frame.Position = UDim2.new(0, 0, 0, self:GetItemPosition(i))
+            end
+            
+            -- Update frame height
+            self:UpdateFrameHeight()
+        end)
+        
+        return true
+    end
+    
+    return false
+end
+
 -- Get position for item at index
 function ArrayListUI:GetItemPosition(index)
     local position = 0
@@ -210,54 +196,44 @@ function ArrayListUI:GetItemPosition(index)
     return position
 end
 
--- Change the configuration
-function ArrayListUI:UpdateConfig(newConfig)
-    for key, value in pairs(newConfig) do
-        if type(value) == "table" then
-            for subKey, subValue in pairs(value) do
-                config[key][subKey] = subValue
-            end
-        else
-            config[key] = value
+-- Toggle an item's active state
+function ArrayListUI:ToggleItemActive(itemId)
+    local item = ArrayListItems[itemId]
+    if item then
+        item.isActive = not item.isActive
+        item.text.TextColor3 = item.isActive and config.activeColor or config.inactiveColor
+        return true
+    end
+    return false
+end
+
+-- Update an item's value
+function ArrayListUI:UpdateValue(itemId, newValue)
+    local item = ArrayListItems[itemId]
+    if item then
+        item.value = newValue
+        local displayText = newValue and (item.name .. " " .. newValue) or item.name
+        item.text.Text = displayText
+        
+        -- Recalculate width based on new text
+        local textWidth = game:GetService("TextService"):GetTextSize(
+            displayText, 
+            config.textSize, 
+            config.font, 
+            Vector2.new(1000, 100)
+        ).X
+        
+        local targetWidth = textWidth + (config.padding * 2) + config.verticalLine.width
+        
+        -- Update main frame width if needed
+        if targetWidth > self.mainFrame.Size.X.Offset then
+            self.mainFrame.Size = UDim2.new(0, targetWidth, self.mainFrame.Size.Y)
         end
-    end
-    
-    -- Update vertical line
-    local verticalLine = self.mainFrame:FindFirstChild("VerticalLine")
-    if verticalLine then
-        verticalLine.BackgroundColor3 = config.verticalLine.color
-        verticalLine.Size = UDim2.new(0, config.verticalLine.width, 1, 0)
-    end
-    
-    -- Update main frame
-    self.mainFrame.BackgroundColor3 = config.background.color
-    self.mainFrame.BackgroundTransparency = config.background.transparency
-    self.mainFrame.Position = config.position
-    
-    -- Update all items
-    for _, item in ipairs(self.items) do
-        item.name.Font = config.font
-        item.name.TextSize = config.textSize
-        item.name.TextColor3 = item.isActive and config.activeColor or config.inactiveColor
-        item.name.Position = UDim2.new(0, config.padding, 0, 0)
-        item.name.Size = UDim2.new(0.5, -config.padding, 1, 0)
         
-        item.value.Font = config.font
-        item.value.TextSize = config.textSize
-        item.value.TextColor3 = Color3.fromRGB(120, 120, 120) -- Darker for the value
-        item.value.Position = UDim2.new(0.5, config.padding, 0, 0)
-        item.value.Size = UDim2.new(0.5, -config.padding, 1, 0)
-        
-        item.frame.Size = UDim2.new(1, 0, 0, config.textSize + 4)
+        return true
     end
     
-    -- Reposition items
-    for i, item in ipairs(self.items) do
-        item.frame.Position = UDim2.new(0, 0, 0, self:GetItemPosition(i))
-    end
-    
-    -- Update frame height
-    self:UpdateFrameHeight()
+    return false
 end
 
 -- Clear all items
@@ -290,12 +266,12 @@ local function Example()
     
     -- Toggle some items after delay
     task.delay(3, function()
-        arrayList:RemoveItem(3) -- Remove Velocity after 3 seconds
+        arrayList:ToggleItemActive(3) -- Toggle Velocity
     end)
     
     -- Update a value after delay
     task.delay(5, function()
-        arrayList:AddItem("NewItem", "Active", true) -- Add new item after 5 seconds
+        arrayList:UpdateValue(1, "Off") -- Change FakeLag value
     end)
 end
 
