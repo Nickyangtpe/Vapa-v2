@@ -1,244 +1,249 @@
-local TweenService = game:GetService("TweenService")
-local UserInputService = game:GetService("UserInputService")
+local ArrayListUI = {}
+ArrayListUI.__index = ArrayListUI
 
-local ArrayList = {}
-ArrayList.__index = ArrayList
+-- Configuration
+local CONFIG = {
+    BACKGROUND_COLOR = Color3.fromRGB(20, 20, 20),
+    TEXT_COLOR = Color3.fromRGB(255, 50, 50),
+    SECONDARY_TEXT_COLOR = Color3.fromRGB(200, 200, 200),
+    BORDER_COLOR = Color3.fromRGB(255, 50, 50),
+    FONT = Enum.Font.SourceSansBold,
+    TEXT_SIZE = 16,
+    PADDING = 8,
+    CORNER_RADIUS = 0,
+    ANIMATION_SPEED = 0.3,
+    POSITION = UDim2.new(1, -10, 0, 10), -- Right top corner
+}
 
-function ArrayList.new(parent)
-    local self = setmetatable({}, ArrayList)
+-- Create a new ArrayList UI
+function ArrayListUI.new()
+    local self = setmetatable({}, ArrayListUI)
     
-    -- Main frame
-    self.frame = Instance.new("Frame")
-    self.frame.Name = "ArrayList"
-    self.frame.Size = UDim2.new(0, 200, 0, 0) -- Height will be determined by content
-    self.frame.Position = UDim2.new(1, 0, 0, 20) -- Start off-screen to the right
-    self.frame.BackgroundTransparency = 1
-    self.frame.Parent = parent or game.Players.LocalPlayer:WaitForChild("PlayerGui"):WaitForChild("ScreenGui")
+    -- Create main frame
+    self.gui = Instance.new("ScreenGui")
+    self.gui.Name = "ArrayListUI"
+    self.gui.ResetOnSpawn = false
+    self.gui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
     
-    -- List of items
+    -- Container for all items
+    self.container = Instance.new("Frame")
+    self.container.Name = "Container"
+    self.container.BackgroundTransparency = 1
+    self.container.Size = UDim2.new(0, 200, 0, 500)
+    self.container.Position = CONFIG.POSITION
+    self.container.AnchorPoint = Vector2.new(1, 0) -- Anchor to right
+    self.container.Parent = self.gui
+    
+    -- List of all items
     self.items = {}
-    self.visible = false
     
-    -- Show the list initially
-    self:show()
+    -- Parent to PlayerGui
+    if game:GetService("RunService"):IsStudio() then
+        self.gui.Parent = game:GetService("Players").LocalPlayer:WaitForChild("PlayerGui")
+    else
+        self.gui.Parent = game:GetService("CoreGui")
+    end
     
     return self
 end
 
-function ArrayList:addItem(text, color)
+-- Add a new item to the ArrayList
+function ArrayListUI:AddItem(name, value)
     -- Create item frame
     local item = Instance.new("Frame")
-    item.Name = text
-    item.Size = UDim2.new(0, 0, 0, 25) -- Height fixed, width will be set based on text
-    item.BackgroundColor3 = Color3.fromRGB(25, 25, 30) -- Dark background
-    item.BackgroundTransparency = 0.2
+    item.Name = name
+    item.BackgroundColor3 = CONFIG.BACKGROUND_COLOR
     item.BorderSizePixel = 0
+    item.AutomaticSize = Enum.AutomaticSize.X
+    item.Size = UDim2.new(0, 0, 0, CONFIG.TEXT_SIZE + CONFIG.PADDING * 2)
+    item.Position = UDim2.new(1, 200, 0, 0) -- Start off-screen for animation
+    item.AnchorPoint = Vector2.new(1, 0)
+    item.Parent = self.container
     
-    -- Add text label
-    local label = Instance.new("TextLabel")
-    label.Name = "Label"
-    label.Size = UDim2.new(1, -10, 1, 0)
-    label.Position = UDim2.new(0, 5, 0, 0)
-    label.BackgroundTransparency = 1
-    label.Text = text
-    label.TextColor3 = color or Color3.fromRGB(255, 255, 255)
-    label.TextXAlignment = Enum.TextXAlignment.Left
-    label.Font = Enum.Font.SourceSansBold
-    label.TextSize = 14
-    label.Parent = item
+    -- Add corner radius
+    local corner = Instance.new("UICorner")
+    corner.CornerRadius = UDim.new(0, CONFIG.CORNER_RADIUS)
+    corner.Parent = item
     
-    -- Calculate width based on text
-    local textBounds = game:GetService("TextService"):GetTextSize(
-        text, 
-        14, 
-        Enum.Font.SourceSansBold, 
-        Vector2.new(math.huge, 25)
-    )
+    -- Add right border
+    local border = Instance.new("Frame")
+    border.Name = "Border"
+    border.BackgroundColor3 = CONFIG.BORDER_COLOR
+    border.BorderSizePixel = 0
+    border.Size = UDim2.new(0, 2, 1, 0)
+    border.Position = UDim2.new(1, 0, 0, 0)
+    border.AnchorPoint = Vector2.new(0, 0)
+    border.ZIndex = 2
+    border.Parent = item
     
-    -- Add padding
-    local width = textBounds.X + 20
-    item.Size = UDim2.new(0, width, 0, 25)
+    -- Create text label for name
+    local nameLabel = Instance.new("TextLabel")
+    nameLabel.Name = "NameLabel"
+    nameLabel.BackgroundTransparency = 1
+    nameLabel.Size = UDim2.new(0, 0, 1, 0)
+    nameLabel.AutomaticSize = Enum.AutomaticSize.X
+    nameLabel.Position = UDim2.new(0, CONFIG.PADDING, 0, 0)
+    nameLabel.Font = CONFIG.FONT
+    nameLabel.TextSize = CONFIG.TEXT_SIZE
+    nameLabel.TextColor3 = CONFIG.TEXT_COLOR
+    nameLabel.Text = name
+    nameLabel.TextXAlignment = Enum.TextXAlignment.Left
+    nameLabel.Parent = item
     
-    -- Add to our items list
+    -- Create text label for value (if provided)
+    local valueLabel = nil
+    if value then
+        valueLabel = Instance.new("TextLabel")
+        valueLabel.Name = "ValueLabel"
+        valueLabel.BackgroundTransparency = 1
+        valueLabel.Size = UDim2.new(0, 0, 1, 0)
+        valueLabel.AutomaticSize = Enum.AutomaticSize.X
+        valueLabel.Position = UDim2.new(0, nameLabel.TextBounds.X + CONFIG.PADDING * 2, 0, 0)
+        valueLabel.Font = CONFIG.FONT
+        valueLabel.TextSize = CONFIG.TEXT_SIZE
+        valueLabel.TextColor3 = CONFIG.SECONDARY_TEXT_COLOR
+        valueLabel.Text = value
+        valueLabel.TextXAlignment = Enum.TextXAlignment.Left
+        valueLabel.Parent = item
+    end
+    
+    -- Add to items table
     table.insert(self.items, {
+        name = name,
         frame = item,
-        text = text,
-        width = width
+        nameLabel = nameLabel,
+        valueLabel = valueLabel
     })
     
-    -- Sort items by width (shortest to longest)
-    table.sort(self.items, function(a, b)
-        return a.width < b.width
-    end)
+    -- Sort and update positions
+    self:SortItems()
+    self:UpdatePositions()
     
-    -- Update layout
-    self:updateLayout()
+    -- Animate in
+    self:AnimateItem(item, true)
     
     return item
 end
 
-function ArrayList:removeItem(text)
+-- Remove an item from the ArrayList
+function ArrayListUI:RemoveItem(name)
     for i, item in ipairs(self.items) do
-        if item.text == text then
+        if item.name == name then
             -- Animate out
-            local tween = TweenService:Create(
-                item.frame,
-                TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
-                {Position = UDim2.new(1, 0, item.frame.Position.Y.Scale, item.frame.Position.Y.Offset)}
-            )
-            tween:Play()
-            
-            tween.Completed:Connect(function()
-                item.frame:Destroy()
+            self:AnimateItem(item.frame, false, function()
+                -- Remove from items table
                 table.remove(self.items, i)
-                self:updateLayout()
+                -- Destroy frame
+                item.frame:Destroy()
+                -- Update positions
+                self:UpdatePositions()
             end)
-            
             break
         end
     end
 end
 
-function ArrayList:updateItem(oldText, newText, newColor)
-    for i, item in ipairs(self.items) do
-        if item.text == oldText then
-            -- Update text
-            local label = item.frame:FindFirstChild("Label")
-            label.Text = newText
-            if newColor then
-                label.TextColor3 = newColor
+-- Update an item's value
+function ArrayListUI:UpdateItem(name, value)
+    for _, item in ipairs(self.items) do
+        if item.name == name then
+            if value then
+                if item.valueLabel then
+                    item.valueLabel.Text = value
+                else
+                    -- Create value label if it doesn't exist
+                    local valueLabel = Instance.new("TextLabel")
+                    valueLabel.Name = "ValueLabel"
+                    valueLabel.BackgroundTransparency = 1
+                    valueLabel.Size = UDim2.new(0, 0, 1, 0)
+                    valueLabel.AutomaticSize = Enum.AutomaticSize.X
+                    valueLabel.Position = UDim2.new(0, item.nameLabel.TextBounds.X + CONFIG.PADDING * 2, 0, 0)
+                    valueLabel.Font = CONFIG.FONT
+                    valueLabel.TextSize = CONFIG.TEXT_SIZE
+                    valueLabel.TextColor3 = CONFIG.SECONDARY_TEXT_COLOR
+                    valueLabel.Text = value
+                    valueLabel.TextXAlignment = Enum.TextXAlignment.Left
+                    valueLabel.Parent = item.frame
+                    
+                    item.valueLabel = valueLabel
+                end
+            elseif item.valueLabel then
+                -- Remove value label if value is nil
+                item.valueLabel:Destroy()
+                item.valueLabel = nil
             end
             
-            -- Recalculate width
-            local textBounds = game:GetService("TextService"):GetTextSize(
-                newText, 
-                14, 
-                Enum.Font.SourceSansBold, 
-                Vector2.new(math.huge, 25)
-            )
-            
-            local width = textBounds.X + 20
-            item.width = width
-            item.text = newText
-            
-            -- Sort items by width (shortest to longest)
-            table.sort(self.items, function(a, b)
-                return a.width < b.width
-            end)
-            
-            -- Update layout
-            self:updateLayout()
-            
+            -- Sort and update positions after changing text
+            self:SortItems()
+            self:UpdatePositions()
             break
         end
     end
 end
 
-function ArrayList:updateLayout()
-    -- Calculate total height
-    local totalHeight = 0
-    for _, item in ipairs(self.items) do
-        totalHeight = totalHeight + item.frame.Size.Y.Offset + 5 -- 5px spacing
-    end
-    
-    -- Update main frame height
-    self.frame.Size = UDim2.new(0, 200, 0, totalHeight)
-    
-    -- Position each item
-    local yOffset = 0
-    for _, item in ipairs(self.items) do
-        -- Set parent if not already set
-        if item.frame.Parent ~= self.frame then
-            item.frame.Parent = self.frame
+-- Sort items by text length (shortest to longest)
+function ArrayListUI:SortItems()
+    table.sort(self.items, function(a, b)
+        local aLength = a.nameLabel.TextBounds.X
+        if a.valueLabel then
+            aLength = aLength + a.valueLabel.TextBounds.X + CONFIG.PADDING
         end
         
-        -- Position the item
-        item.frame.Position = UDim2.new(1, -item.width, 0, yOffset)
-        item.frame.Size = UDim2.new(0, item.width, 0, 25)
+        local bLength = b.nameLabel.TextBounds.X
+        if b.valueLabel then
+            bLength = bLength + b.valueLabel.TextBounds.X + CONFIG.PADDING
+        end
         
-        -- Add corner radius
-        local corner = item.frame:FindFirstChild("UICorner") or Instance.new("UICorner")
-        corner.CornerRadius = UDim.new(0, 4)
-        corner.Parent = item.frame
-        
-        -- Add stroke
-        local stroke = item.frame:FindFirstChild("UIStroke") or Instance.new("UIStroke")
-        stroke.Color = Color3.fromRGB(60, 60, 70)
-        stroke.Thickness = 1
-        stroke.Parent = item.frame
-        
-        -- Update yOffset for next item
-        yOffset = yOffset + item.frame.Size.Y.Offset + 5
-    end
-end
-
-function ArrayList:show()
-    if self.visible then return end
-    
-    self.visible = true
-    
-    -- Animate in from right
-    local tween = TweenService:Create(
-        self.frame,
-        TweenInfo.new(0.5, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
-        {Position = UDim2.new(1, 0, 0, 20)}
-    )
-    tween:Play()
-    
-    -- Animate each item
-    for i, item in ipairs(self.items) do
-        local delay = i * 0.05
-        local targetPos = item.frame.Position
-        
-        item.frame.Position = UDim2.new(1, 0, targetPos.Y.Scale, targetPos.Y.Offset)
-        
-        task.delay(delay, function()
-            local itemTween = TweenService:Create(
-                item.frame,
-                TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
-                {Position = targetPos}
-            )
-            itemTween:Play()
-        end)
-    end
-end
-
-function ArrayList:hide()
-    if not self.visible then return end
-    
-    self.visible = false
-    
-    -- Animate each item out
-    for i, item in ipairs(self.items) do
-        local delay = i * 0.05
-        
-        task.delay(delay, function()
-            local itemTween = TweenService:Create(
-                item.frame,
-                TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
-                {Position = UDim2.new(1, 0, item.frame.Position.Y.Scale, item.frame.Position.Y.Offset)}
-            )
-            itemTween:Play()
-        end)
-    end
-    
-    -- Animate main frame out
-    task.delay(#self.items * 0.05 + 0.3, function()
-        local tween = TweenService:Create(
-            self.frame,
-            TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
-            {Position = UDim2.new(1, 200, 0, 20)}
-        )
-        tween:Play()
+        return aLength < bLength
     end)
 end
 
-function ArrayList:toggle()
-    if self.visible then
-        self:hide()
-    else
-        self:show()
+-- Update positions of all items
+function ArrayListUI:UpdatePositions()
+    local yOffset = 0
+    
+    for _, item in ipairs(self.items) do
+        -- Tween to new position
+        game:GetService("TweenService"):Create(
+            item.frame,
+            TweenInfo.new(CONFIG.ANIMATION_SPEED, Enum.EasingStyle.Quart, Enum.EasingDirection.Out),
+            {Position = UDim2.new(1, 0, 0, yOffset)}
+        ):Play()
+        
+        yOffset = yOffset + item.frame.Size.Y.Offset + 2
     end
 end
 
-return ArrayList
+-- Animate item in or out
+function ArrayListUI:AnimateItem(item, isIn, callback)
+    local targetX = isIn and 0 or 200
+    
+    local tween = game:GetService("TweenService"):Create(
+        item,
+        TweenInfo.new(CONFIG.ANIMATION_SPEED, Enum.EasingStyle.Quart, Enum.EasingDirection.Out),
+        {Position = UDim2.new(1, targetX, item.Position.Y.Scale, item.Position.Y.Offset)}
+    )
+    
+    if callback then
+        tween.Completed:Connect(callback)
+    end
+    
+    tween:Play()
+end
+
+-- Clear all items
+function ArrayListUI:Clear()
+    for i = #self.items, 1, -1 do
+        local item = self.items[i]
+        item.frame:Destroy()
+    end
+    
+    self.items = {}
+end
+
+-- Destroy the UI
+function ArrayListUI:Destroy()
+    self.gui:Destroy()
+end
+
+return ArrayListUI
