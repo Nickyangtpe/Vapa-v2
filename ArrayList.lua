@@ -181,7 +181,7 @@ function ArrayListUI:UpdateItem(name, value)
     end
 end
 
--- Sort items by text length (shortest to longest)
+-- Sort items by text length (longest to shortest)
 function ArrayListUI:SortItems()
     table.sort(self.items, function(a, b)
         local aLength = a.nameLabel.TextBounds.X
@@ -194,7 +194,8 @@ function ArrayListUI:SortItems()
             bLength = bLength + b.valueLabel.TextBounds.X + CONFIG.PADDING
         end
         
-        return aLength < bLength
+        -- Changed from < to > to sort from longest to shortest
+        return aLength > bLength
     end)
 end
 
@@ -210,7 +211,8 @@ function ArrayListUI:UpdatePositions()
             {Position = UDim2.new(1, 0, 0, yOffset)}
         ):Play()
         
-        yOffset = yOffset + item.frame.Size.Y.Offset + 2
+        -- No gap between items (removed +2)
+        yOffset = yOffset + item.frame.Size.Y.Offset
     end
 end
 
