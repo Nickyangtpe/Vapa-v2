@@ -130,6 +130,47 @@ function ArrayListUI:AddItem(name, value)
     
     return item
 end
+
+function ArrayListUI:UpdateItem(name, value)  
+    for _, item in ipairs(self.items) do  
+        if item.name == name then  
+            if value then  
+                if item.valueLabel then  
+                    item.valueLabel.Text = value  
+                else  
+                    -- Create value label if it doesn't exist  
+                    local valueLabel = Instance.new("TextLabel")  
+                    valueLabel.Name = "ValueLabel"  
+                    valueLabel.BackgroundTransparency = 1  
+                    valueLabel.Size = UDim2.new(0, 0, 1, 0)  
+                    valueLabel.AutomaticSize = Enum.AutomaticSize.X  
+                    valueLabel.Position = UDim2.new(0, item.nameLabel.TextBounds.X + CONFIG.PADDING * 2, 0, 0)  
+                    valueLabel.Font = CONFIG.FONT  
+                    valueLabel.TextSize = CONFIG.TEXT_SIZE  
+                    valueLabel.TextColor3 = CONFIG.SECONDARY_TEXT_COLOR  
+                    valueLabel.Text = value  
+                    valueLabel.TextXAlignment = Enum.TextXAlignment.Left  
+                    valueLabel.Parent = item.frame  
+                      
+                    item.valueLabel = valueLabel  
+                end  
+            elseif item.valueLabel then  
+                -- Remove value label if value is nil  
+                item.valueLabel:Destroy()  
+                item.valueLabel = nil  
+            end  
+              
+            -- Wait for any ongoing animations to complete  
+            self:WaitForAnimations(function()  
+                -- Sort and update positions after changing text  
+                self:SortItems()  
+                self:UpdatePositions()  
+            end)  
+            break  
+        end  
+    end  
+end  
+
 -- 更新 ValueLabel 位置
 function ArrayListUI:UpdateValueLabelPosition(item)
     if item.valueLabel then
