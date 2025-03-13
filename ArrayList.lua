@@ -52,27 +52,22 @@ end
 
 -- Add a new item to the ArrayList
 function ArrayListUI:AddItem(name, value)
+    -- Create item frame
     local item = Instance.new("Frame")
     item.Name = name
     item.BackgroundColor3 = CONFIG.BACKGROUND_COLOR
     item.BorderSizePixel = 0
+    item.AutomaticSize = Enum.AutomaticSize.X
     item.Size = UDim2.new(0, 0, 0, CONFIG.TEXT_SIZE + CONFIG.PADDING * 2)
-    item.Position = UDim2.new(1, 200, 0, 0)
+    item.Position = UDim2.new(1, 200, 0, 0) -- Start off-screen for animation
     item.AnchorPoint = Vector2.new(1, 0)
-    item.Parent = self.container
-
-    local border = Instance.new("Frame")
-    border.Name = "Border"
-    border.BackgroundColor3 = CONFIG.BORDER_COLOR
-    border.BorderSizePixel = 0
-    border.Size = UDim2.new(0, 2, 1, 0)
-    border.Position = UDim2.new(1, 0, 0, 0)
-    border.Parent = item
-
+    
+    -- Create text label for name
     local nameLabel = Instance.new("TextLabel")
     nameLabel.Name = "NameLabel"
     nameLabel.BackgroundTransparency = 1
     nameLabel.Size = UDim2.new(0, 0, 1, 0)
+    nameLabel.AutomaticSize = Enum.AutomaticSize.X
     nameLabel.Position = UDim2.new(0, CONFIG.PADDING, 0, 0)
     nameLabel.Font = CONFIG.FONT
     nameLabel.TextSize = CONFIG.TEXT_SIZE
@@ -80,43 +75,61 @@ function ArrayListUI:AddItem(name, value)
     nameLabel.Text = name
     nameLabel.TextXAlignment = Enum.TextXAlignment.Left
     nameLabel.Parent = item
-
-    local valueLabel = nil
-    if value then
-        valueLabel = Instance.new("TextLabel")
-        valueLabel.Name = "ValueLabel"
-        valueLabel.BackgroundTransparency = 1
-        valueLabel.Size = UDim2.new(0, 0, 1, 0)
-        valueLabel.Font = CONFIG.FONT
-        valueLabel.TextSize = CONFIG.TEXT_SIZE
-        valueLabel.TextColor3 = CONFIG.SECONDARY_TEXT_COLOR
-        valueLabel.Text = value
-        valueLabel.TextXAlignment = Enum.TextXAlignment.Left
-        valueLabel.Parent = item
-    end
-
-    local newItem = {
-        name = name,
-        frame = item,
-        nameLabel = nameLabel,
-        valueLabel = valueLabel
-    }
     
-    table.insert(self.items, newItem)
-
-    -- 等待 TextBounds 更新後再執行排序與動畫
-    nameLabel:GetPropertyChangedSignal("TextBounds"):Connect(function()
-        self:UpdateValueLabelPosition(newItem)
+    -- Add right border
+    local border = Instance.new("Frame")
+    border.Name = "Border"
+    border.BackgroundColor3 = CONFIG.BORDER_COLOR
+    border.BorderSizePixel = 0
+    border.Size = UDim2.new(0, 2, 1, 0)
+    border.Position = UDim2.new(1, 0, 0, 0)
+    border.AnchorPoint = Vector2.new(0, 0)
+    border.ZIndex = 2
+    border.Parent = item
+    
+    -- Force render to calculate TextBounds
+    item.Parent = self.container
+    
+    -- Wait a frame to ensure TextBounds are calculated
+    task.defer(function()
+        -- Create text label for value (if provided)
+        local valueLabel = nil
+        if value then
+            valueLabel = Instance.new("TextLabel")
+            valueLabel.Name = "ValueLabel"
+            valueLabel.BackgroundTransparency = 1
+            valueLabel.Size = UDim2.new(0, 0, 1, 0)
+            valueLabel.AutomaticSize = Enum.AutomaticSize.X
+            valueLabel.Position = UDim2.new(0, nameLabel.TextBounds.X + CONFIG.PADDING * 2, 0, 0)
+            valueLabel.Font = CONFIG.FONT
+            valueLabel.TextSize = CONFIG.TEXT_SIZE
+            valueLabel.TextColor3 = CONFIG.SECONDARY_TEXT_COLOR
+            valueLabel.Text = value
+            valueLabel.TextXAlignment = Enum.TextXAlignment.Left
+            valueLabel.Parent = item
+        end
+        
+        -- Add to items table
+        table.insert(self.items, {
+            name = name,
+            frame = item,
+            nameLabel = nameLabel,
+            valueLabel = valueLabel
+        })
+        
+        -- Wait for any ongoing animations to complete
         self:WaitForAnimations(function()
+            -- Sort and update positions
             self:SortItems()
             self:UpdatePositions()
+            
+            -- Animate in
             self:AnimateItem(item, true)
         end)
     end)
-
+    
     return item
 end
-
 -- 更新 ValueLabel 位置
 function ArrayListUI:UpdateValueLabelPosition(item)
     if item.valueLabel then
