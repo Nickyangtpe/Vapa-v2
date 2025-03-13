@@ -37,6 +37,9 @@ function ArrayListUI.new()
     -- List of all items
     self.items = {}
     
+    -- Animation lock to prevent overlapping during animations
+    self.isAnimating = false
+    
     -- Parent to PlayerGui
     if game:GetService("RunService"):IsStudio() then
         self.gui.Parent = game:GetService("Players").LocalPlayer:WaitForChild("PlayerGui")
@@ -59,11 +62,6 @@ function ArrayListUI:AddItem(name, value)
     item.Position = UDim2.new(1, 200, 0, 0) -- Start off-screen for animation
     item.AnchorPoint = Vector2.new(1, 0)
     item.Parent = self.container
-    
-    -- Add corner radius
-    local corner = Instance.new("UICorner")
-    corner.CornerRadius = UDim.new(0, CONFIG.CORNER_RADIUS)
-    corner.Parent = item
     
     -- Add right border
     local border = Instance.new("Frame")
@@ -115,12 +113,15 @@ function ArrayListUI:AddItem(name, value)
         valueLabel = valueLabel
     })
     
-    -- Sort and update positions
-    self:SortItems()
-    self:UpdatePositions()
-    
-    -- Animate in
-    self:AnimateItem(item, true)
+    -- Wait for any ongoing animations to complete
+    self:WaitForAnimations(function()
+        -- Sort and update positions
+        self:SortItems()
+        self:UpdatePositions()
+        
+        -- Animate in
+        self:AnimateItem(item, true)
+    end)
     
     return item
 end
@@ -129,14 +130,18 @@ end
 function ArrayListUI:RemoveItem(name)
     for i, item in ipairs(self.items) do
         if item.name == name then
-            -- Animate out
-            self:AnimateItem(item.frame, false, function()
-                -- Remove from items table
-                table.remove(self.items, i)
-                -- Destroy frame
-                item.frame:Destroy()
-                -- Update positions
-                self:UpdatePositions()
+            -- Wait for any ongoing animations to complete
+            self:WaitForAnimations(function()
+                -- Animate out
+                self:AnimateItem(item.frame, false, function()
+                    -- Remove from items table
+                    table.remove(self.items, i)
+                    -- Destroy frame
+                    item.frame:Destroy()
+                    -- Update positions
+                    self:SortItems()
+                    self:UpdatePositions()
+                end)
             end)
             break
         end
@@ -173,51 +178,98 @@ function ArrayListUI:UpdateItem(name, value)
                 item.valueLabel = nil
             end
             
-            -- Sort and update positions after changing text
-            self:SortItems()
-            self:UpdatePositions()
+            -- Wait for any ongoing animations to complete
+            self:WaitForAnimations(function()
+                -- Sort and update positions after changing text
+                self:SortItems()
+                self:UpdatePositions()
+            end)
             break
         end
     end
 end
 
+-- Wait for animations to complete
+function ArrayListUI:WaitForAnimations(callback)
+    if self.isAnimating then
+        -- Queue the callback to run after current animation
+        local originalCallback = self.animationCallback
+        self.animationCallback = function()
+            if originalCallback then
+                originalCallback()
+            end
+            callback()
+        end
+    else
+        -- Run immediately if no animation is in progress
+        callback()
+    end
+end
+
+-- Calculate item width
+function ArrayListUI:GetItemWidth(item)
+    local width = item.nameLabel.TextBounds.X + CONFIG.PADDING * 2
+    if item.valueLabel then
+        width = width + item.valueLabel.TextBounds.X + CONFIG.PADDING
+    end
+    return width
+end
+
 -- Sort items by text length (longest to shortest)
 function ArrayListUI:SortItems()
     table.sort(self.items, function(a, b)
-        local aLength = a.nameLabel.TextBounds.X
-        if a.valueLabel then
-            aLength = aLength + a.valueLabel.TextBounds.X + CONFIG.PADDING
-        end
+        local aWidth = self:GetItemWidth(a)
+        local bWidth = self:GetItemWidth(b)
         
-        local bLength = b.nameLabel.TextBounds.X
-        if b.valueLabel then
-            bLength = bLength + b.valueLabel.TextBounds.X + CONFIG.PADDING
-        end
-        
-        -- Changed from < to > to sort from longest to shortest
-        return aLength > bLength
+        -- Sort from longest to shortest
+        return aWidth > bWidth
     end)
 end
 
--- Update positions of all items
+-- Update positions of all items with no gaps
 function ArrayListUI:UpdatePositions()
+    self.isAnimating = true
     local yOffset = 0
+    local tweens = {}
     
-    for _, item in ipairs(self.items) do
-        -- Tween to new position
-        game:GetService("TweenService"):Create(
+    for i, item in ipairs(self.items) do
+        -- Set ZIndex to ensure proper layering (higher items on top)
+        item.frame.ZIndex = 100 - i
+        
+        -- Create tween
+        local tween = game:GetService("TweenService"):Create(
             item.frame,
             TweenInfo.new(CONFIG.ANIMATION_SPEED, Enum.EasingStyle.Quart, Enum.EasingDirection.Out),
             {Position = UDim2.new(1, 0, 0, yOffset)}
-        ):Play()
+        )
         
-        -- No gap between items (removed +2)
+        -- Add to tweens table
+        table.insert(tweens, tween)
+        
+        -- Update yOffset for next item
         yOffset = yOffset + item.frame.Size.Y.Offset
     end
+    
+    -- Play all tweens
+    for _, tween in ipairs(tweens) do
+        tween:Play()
+    end
+    
+    -- Set a timer to mark animation as complete
+    spawn(function()
+        wait(CONFIG.ANIMATION_SPEED + 0.05) -- Add a small buffer
+        self.isAnimating = false
+        if self.animationCallback then
+            local callback = self.animationCallback
+            self.animationCallback = nil
+            callback()
+        end
+    end)
 end
 
 -- Animate item in or out
 function ArrayListUI:AnimateItem(item, isIn, callback)
+    self.isAnimating = true
     local targetX = isIn and 0 or 200
     
     local tween = game:GetService("TweenService"):Create(
@@ -226,15 +278,33 @@ function ArrayListUI:AnimateItem(item, isIn, callback)
         {Position = UDim2.new(1, targetX, item.Position.Y.Scale, item.Position.Y.Offset)}
     )
     
-    if callback then
-        tween.Completed:Connect(callback)
-    end
+    tween.Completed:Connect(function()
+        self.isAnimating = false
+        if callback then
+            callback()
+        end
+        if self.animationCallback then
+            local animCallback = self.animationCallback
+            self.animationCallback = nil
+            animCallback()
+        end
+    end)
     
     tween:Play()
 end
 
+-- Update value label position
+function ArrayListUI:UpdateValueLabelPosition(item)
+    if item.valueLabel then
+        item.valueLabel.Position = UDim2.new(0, item.nameLabel.TextBounds.X + CONFIG.PADDING * 2, 0, 0)
+    end
+end
+
 -- Clear all items
 function ArrayListUI:Clear()
+    self.isAnimating = false
+    self.animationCallback = nil
+    
     for i = #self.items, 1, -1 do
         local item = self.items[i]
         item.frame:Destroy()
@@ -245,6 +315,8 @@ end
 
 -- Destroy the UI
 function ArrayListUI:Destroy()
+    self.isAnimating = false
+    self.animationCallback = nil
     self.gui:Destroy()
 end
 
