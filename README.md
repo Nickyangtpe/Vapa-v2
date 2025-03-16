@@ -5,3 +5,7 @@ loadstring(game:HttpGet("https://raw.githubusercontent.com/Nickyangtpe/Vapa-v2/m
 ```
 loadstring(game:HttpGet("https://raw.githubusercontent.com/Nickyangtpe/Vapa-v2/refs/heads/main/Vapav2-Arsenal.lua", true))()
 ```
+
+```lua
+loadstring(game:HttpGet("https://raw.githubusercontent.com/Nickyangtpe/Vapa-v2/main/Vapav3.lua", true))()
+```
