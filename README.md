@@ -12,6 +12,10 @@ loadstring(game:HttpGet("https://raw.githubusercontent.com/Nickyangtpe/Vapa-v2/r
 
 # Vapa v3
 
+```lua
+loadstring(game:HttpGet("https://raw.githubusercontent.com/Nickyangtpe/Vapa-v2/main/Vapav3.lua", true))()
+```
+
 ## Powerful Roblox Exploit Library (Closed Source)
 
 Vapa v3 is a feature-rich, closed-source exploit library for Roblox, designed to enhance your gaming experience with a wide array of functionalities. This library provides a user-friendly graphical interface (GUI) to easily access and control various exploit features, categorized for intuitive navigation.
