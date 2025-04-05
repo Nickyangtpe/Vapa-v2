@@ -32,6 +32,8 @@ Vapa v3 is a feature-rich, closed-source exploit library for Roblox, designed to
 
 ## Features
 
+## Features
+
 Vapa v3 is packed with features across several categories, giving you extensive control and abilities within Roblox games.
 
 **Combat:**
@@ -49,7 +51,7 @@ Vapa v3 is packed with features across several categories, giving you extensive 
     *   **Target:** Select a specific player, "None" for random, or use range-based random. (Dynamic list)
     *   **Team Check:** Avoid teleporting to teammates (toggle).
     *   **Interval:** Adjust the time between teleports.
-    *   **Duration:** Adjust how long you stay teleported (before potentially returning - depends on implementation details not fully clear from UI code alone).
+    *   **Duration:** Adjust how long you stay teleported after each interval trigger.
     *   **Distance:** Adjust the distance behind the target to teleport.
     *   **Range:** Enable/disable teleporting only to players within a specific X/Y range (toggle).
     *   **Range X/Y:** Define the horizontal range for targeted teleports.
@@ -77,6 +79,14 @@ Vapa v3 is packed with features across several categories, giving you extensive 
     *   **Color:** Choose the color for creature ESP boxes.
 *   **Glow (Player Outline Glow):** Add a glowing outline to players using `Highlight`.
     *   *(Note: Color customization might be implicitly tied to ESP color or default)*
+*   **Noclip Camera:** Prevents the camera from being obstructed by parts (Invisicam).
+*   **View Force:** Force the camera into a specific mode.
+    *   **Mode:** Choose between Classic (None) or LockFirstPerson.
+*   **Infinite Sight:** Removes the maximum zoom-out distance limit for the camera.
+*   **DVD (Bouncing Logo):** Display a text label that bounces around the screen like the classic DVD logo.
+    *   **Text:** Customize the text displayed.
+    *   **Bounce Change Color:** Change the text color randomly on each screen edge bounce (toggle).
+    *   **Color:** Set the default text color (used when Bounce Change Color is off).
 *   **Skeleton ESP (Bone ESP):** Draw lines connecting player character bones.
     *   **Team Check:** Use player team colors for skeleton lines (toggle).
     *   **Color:** Choose the default color for skeleton lines.
@@ -90,7 +100,7 @@ Vapa v3 is packed with features across several categories, giving you extensive 
 *   **Tracers (Line Tracers to Players):** Draw lines from a screen point to players.
     *   **Team Color:** Use player team colors for tracers (toggle).
     *   **Thickness:** Adjust the thickness of the tracer lines.
-    *   **Style:** Choose the origin point of the tracer lines (Bottom, Left, Right, Top, etc.).
+    *   **Style:** Choose the origin point of the tracer lines (Bottom, Left, Right, Top, RightTop, LeftTop).
     *   **Color:** Choose the default color for tracer lines.
 *   **China Hat (Cone Hat Visual):** Add a cosmetic cone hat to your character.
     *   **RGB:** Enable rainbow color cycling for the hat (toggle).
@@ -105,13 +115,13 @@ Vapa v3 is packed with features across several categories, giving you extensive 
     *   **Thickness:** Adjust the thickness of the crosshair lines.
     *   **Length:** Adjust the length of the crosshair lines.
     *   **Gap:** Adjust the gap between the center and the crosshair lines.
-    *   **Dot Size:** Adjust the size of the center dot.
+    *   **Dot Size:** Adjust the size of the center dot (set > 0 to enable).
     *   **Color:** Choose the color of the crosshair.
-    *   *(Note: Dot visibility is toggled via Dot Size > 0)*
 *   **Jump Wave (Jump Effect):** Create a visual wave effect on the ground when landing.
     *   **Size:** Adjust the maximum radius of the wave effect.
     *   **Duration:** Adjust how long the wave effect lasts.
-*   **BackRunner (Run Backwards):** Force your character to face away from the camera while moving.
+*   **Back Runner:** Force your character to face away from the camera while moving.
+*   **TargetHUD:** Display an animated HUD with detailed information (Avatar, Name, Health, Distance) about the current Aim Assist target. (Toggle)
 
 **Player:**
 
@@ -124,12 +134,12 @@ Vapa v3 is packed with features across several categories, giving you extensive 
 *   **Anti-AFK:** Prevent being kicked for inactivity by simulating input.
 *   **LeaveNotification:** Display a message when a player leaves the game.
 *   **HealthWarning:** Display a warning message when your health drops below a threshold.
-     *   **Health (%):** Set the health percentage threshold for the warning.
+    *   **Health (%):** Set the health percentage threshold for the warning.
 
 **Movement:**
 
 *   **Noclip (No Clip):** Allow passing through walls and objects.
-*   **Air Step:** Allows slight upward movement when walking off ledges (simulates stepping).
+*   **Air Step:** Maintain altitude briefly when walking off ledges if not moving.
 *   **Fly:** Enable free flight mode.
     *   **Speed:** Adjust flight speed.
 *   **Walk Speed:** Modify your character's walking speed.
@@ -141,15 +151,15 @@ Vapa v3 is packed with features across several categories, giving you extensive 
     *   **Infinite:** Allow unlimited jumps in the air (toggle).
 *   **Gravity:** Modify the workspace gravity.
     *   **Value:** Adjust the gravity strength (can be negative).
-*   **Auto Walk:** Automatically walk forward.
+*   **Auto Walk:** Automatically walk forward based on character facing direction.
     *   **Speed:** Adjust the auto walk speed multiplier (can be negative for backwards).
 *   **Fast Stop:** Instantly stop horizontal movement when movement keys are released.
 
 **Misc:**
 
-*   **HUD (Heads-Up Display):** Toggle the visibility of the on-screen stats display (FPS, Ping, Coords).
+*   **HUD (Heads-Up Display):** Toggle the visibility of the on-screen stats display (FPS, Ping, Coords - *if implemented by the library*).
 *   **Config (Configuration System):** Manage exploit settings.
-    *   **Configs Dropdown:** Select a saved configuration file to load on the next launch (requires restart).
+    *   **Configs Dropdown:** Select a saved configuration file to load on the next launch (requires script restart).
     *   **Config Name Textbox:** Enter the name for saving the current configuration.
     *   **Save Button:** Save the current settings to the specified config name.
 
