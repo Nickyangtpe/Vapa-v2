@@ -24,8 +24,6 @@ Vapa v3 is a feature-rich, closed-source exploit library for Roblox, designed to
 
 ## Features
 
-## Features
-
 Vapa v3 is packed with features across several categories, giving you extensive control and abilities within Roblox games.
 
 **Combat:**
@@ -46,7 +44,7 @@ Vapa v3 is packed with features across several categories, giving you extensive 
     *   **Duration:** Adjust how long you stay teleported after each interval trigger.
     *   **Distance:** Adjust the distance behind the target to teleport.
     *   **Range:** Enable/disable teleporting only to players within a specific X/Y range (toggle).
-    *   **Range X/Y:** Define the horizontal range for targeted teleports.
+    *   **Range X/Y:** Define the horizontal/vertical range for targeted teleports.
 *   **SpinBot:** Rapidly rotate your character model.
     *   **Speed:** Adjust the rotation speed.
 
@@ -70,7 +68,7 @@ Vapa v3 is packed with features across several categories, giving you extensive 
 *   **Creature ESP (NPC/Monster Boxes):** Highlight non-player characters.
     *   **Color:** Choose the color for creature ESP boxes.
 *   **Glow (Player Outline Glow):** Add a glowing outline to players using `Highlight`.
-    *   *(Note: Color customization might be implicitly tied to ESP color or default)*
+    *   *(Note: Color is fixed to white by default)*
 *   **Noclip Camera:** Prevents the camera from being obstructed by parts (Invisicam).
 *   **View Force:** Force the camera into a specific mode.
     *   **Mode:** Choose between Classic (None) or LockFirstPerson.
@@ -107,7 +105,7 @@ Vapa v3 is packed with features across several categories, giving you extensive 
     *   **Thickness:** Adjust the thickness of the crosshair lines.
     *   **Length:** Adjust the length of the crosshair lines.
     *   **Gap:** Adjust the gap between the center and the crosshair lines.
-    *   **Dot Size:** Adjust the size of the center dot (set > 0 to enable).
+    *   **Dot Size:** Adjust the size of the center dot (set > 0 to make visible, if `CustomCrosshair_Dot` setting is true).
     *   **Color:** Choose the color of the crosshair.
 *   **Jump Wave (Jump Effect):** Create a visual wave effect on the ground when landing.
     *   **Size:** Adjust the maximum radius of the wave effect.
@@ -119,8 +117,11 @@ Vapa v3 is packed with features across several categories, giving you extensive 
 
 *   **Player Teleport:** Teleport directly to a selected player.
     *   **Target:** Select the target player from a dynamic list.
+*   **PlayerState:** Force your character into a specific HumanoidStateType.
+    *   **Type:** Select the desired state (e.g., FallingDown, Ragdoll, Jumping, Swimming, etc.).
 *   **Click Teleport:** Teleport to the location clicked by your mouse in the 3D world.
 *   **Spamming (Chat Spammer):** Automatically send messages to the game chat.
+    *   **Bypass:** Add random characters to the message to attempt to bypass chat filters (toggle).
     *   **Interval:** Adjust the time between messages.
     *   **Text:** Customize the message to be spammed.
 *   **Anti-AFK:** Prevent being kicked for inactivity by simulating input.
@@ -137,7 +138,7 @@ Vapa v3 is packed with features across several categories, giving you extensive 
 *   **Walk Speed:** Modify your character's walking speed.
     *   **Speed:** Adjust the desired walk speed value.
     *   **Mode:** Choose movement mode (None or BHop - Bunny Hopping).
-*   **High Jump:** Increase your character's jump height.
+*   **High Jump (HightJump):** Increase your character's jump height.
     *   **Height (Power):** Adjust the jump power.
 *   **Air Jump:** Allow jumping while in mid-air.
     *   **Infinite:** Allow unlimited jumps in the air (toggle).
@@ -152,6 +153,7 @@ Vapa v3 is packed with features across several categories, giving you extensive 
 *   **HUD (Heads-Up Display):** Toggle the visibility of the on-screen stats display (FPS, Ping, Coords - *if implemented by the library*).
 *   **Config (Configuration System):** Manage exploit settings.
     *   **Configs Dropdown:** Select a saved configuration file to load on the next launch (requires script restart).
+    *   **GameCheck:** Only load the selected config if the current Game ID matches the one stored in the config (toggle).
     *   **Config Name Textbox:** Enter the name for saving the current configuration.
     *   **Save Button:** Save the current settings to the specified config name.
 
